@@ -75,6 +75,11 @@ export async function POST(request: NextRequest) {
 
     if (!apiKey) {
       console.log('Moltbook /register: could not find API key in response. Full response:', JSON.stringify(data));
+      // Return the raw Moltbook response so the client can show it for debugging
+      return NextResponse.json(
+        { error: `Registration succeeded but no API key found. Moltbook returned: ${JSON.stringify(data)}` },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ apiKey, claimUrl });

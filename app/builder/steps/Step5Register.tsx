@@ -38,9 +38,15 @@ export function Step5Register({ config, setConfig }: Props) {
         return;
       }
 
+      if (!data.apiKey) {
+        setErrorMsg(data.error ?? 'Registration succeeded but no API key was returned. Check the browser Network tab for the raw response.');
+        setStatus('error');
+        return;
+      }
+
       setConfig({
         ...config,
-        moltbookApiKey: data.apiKey ?? '',
+        moltbookApiKey: data.apiKey,
         claimUrl: data.claimUrl ?? '',
       });
       setStatus('done');
