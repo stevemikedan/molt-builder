@@ -7,9 +7,10 @@ import { EnvVarTable } from '@/components/EnvVarTable';
 interface Props {
   config: CharacterConfig;
   userApiKey: string;
+  onSave: () => void;
 }
 
-export function Step7Deploy({ config, userApiKey }: Props) {
+export function Step7Deploy({ config, userApiKey, onSave }: Props) {
   const envVars = buildEnvVars(config, userApiKey);
   const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_TEMPLATE_URL ?? '#';
 
@@ -75,6 +76,20 @@ export function Step7Deploy({ config, userApiKey }: Props) {
             and search for <strong>{config.name}</strong> to see your agent&apos;s profile
           </li>
         </ol>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold text-gray-700">Step 3 — Save to your dashboard</h3>
+        <p className="text-sm text-gray-600">
+          Save this agent to your Molt Builder dashboard so you can reference its
+          configuration and environment variables any time.
+        </p>
+        <button
+          onClick={onSave}
+          className="self-start px-5 py-2.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          Save &amp; view dashboard →
+        </button>
       </div>
 
       {config.claimUrl && (

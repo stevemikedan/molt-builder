@@ -1,26 +1,62 @@
 @import "tailwindcss";
 
+/* ── Moline dark design tokens ──────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --bg-base:       #0a0b0d;
+  --bg-surface:    #111318;
+  --bg-elevated:   #181b22;
+  --bg-card:       #1a1d25;
+
+  /* Borders */
+  --border-dim:    rgba(255,255,255,0.08);
+  --border-subtle: rgba(255,255,255,0.04);
+  --border-active: rgba(255,255,255,0.15);
+
+  /* Text */
+  --text-primary:   #d4d1cc;
+  --text-secondary: #8a8780;
+  --text-tertiary:  #5a5854;
+  --text-ghost:     #3a3834;
+
+  /* Accent colours */
+  --accent-amber:      #c4956a;
+  --accent-amber-dim:  rgba(196,149,106,0.12);
+  --accent-teal:       #5a9e8f;
+  --accent-teal-dim:   rgba(90,158,143,0.12);
+  --accent-violet:     #8b7ec8;
+  --accent-violet-dim: rgba(139,126,200,0.12);
+  --accent-rust:       #b8644e;
+  --accent-rust-dim:   rgba(184,100,78,0.12);
+  --accent-slate:      #7a9ab5;
+  --accent-slate-dim:  rgba(122,154,181,0.12);
+  --accent-bone:       #b5ae9f;
+  --accent-bone-dim:   rgba(181,174,159,0.12);
 }
 
+/* ── Tailwind v4 theme: wire font stacks to next/font variables ──────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:  var(--font-dm-sans, system-ui, sans-serif);
+  --font-mono:  var(--font-ibm-plex-mono, ui-monospace, monospace);
+  --font-serif: var(--font-cormorant, Georgia, serif);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base ────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
 }
+
+/* ── Subtle dark scrollbars ──────────────────────────────────────────── */
+::-webkit-scrollbar             { width: 5px; height: 5px; }
+::-webkit-scrollbar-track       { background: transparent; }
+::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.08); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CharacterConfig, DEFAULT_CONFIG } from '@/types/character';
 import { Step1Name } from './steps/Step1Name';
 import { Step2Persona } from './steps/Step2Persona';
@@ -9,6 +10,8 @@ import { Step4Interests } from './steps/Step4Interests';
 import { Step5Register } from './steps/Step5Register';
 import { Step6Preview } from './steps/Step6Preview';
 import { Step7Deploy } from './steps/Step7Deploy';
+import { saveAgent } from '@/lib/agentStorage';
+import { buildEnvVars } from '@/lib/buildEnvVars';
 
 const STEPS = [
   'Name',
@@ -53,6 +56,13 @@ export default function BuilderPage() {
   const [config, setConfig] = useState<CharacterConfig>(DEFAULT_CONFIG);
   const [nameAvailable, setNameAvailable] = useState(false);
   const [userApiKey, setUserApiKey] = useState('');
+  const router = useRouter();
+
+  function handleSave() {
+    const envVars = buildEnvVars(config, userApiKey);
+    saveAgent(config, envVars);
+    router.push('/');
+  }
 
   const isLast = step === STEPS.length - 1;
   const canNext = canAdvance(step, config, nameAvailable);
@@ -63,7 +73,7 @@ export default function BuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-base, #0a0b0d)' }}>
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
@@ -118,7 +128,7 @@ export default function BuilderPage() {
               setUserApiKey={setUserApiKey}
             />
           )}
-          {step === 6 && <Step7Deploy config={config} userApiKey={userApiKey} />}
+          {step === 6 && <Step7Deploy config={config} userApiKey={userApiKey} onSave={handleSave} />}
         </div>
 
         {/* Navigation */}
