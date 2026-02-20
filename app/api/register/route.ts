@@ -52,16 +52,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: text }, { status: resp.status });
     }
 
-    const data = (await resp.json()) as {
-      api_key?: string;
-      apiKey?: string;
-      claim_url?: string;
-      claimUrl?: string;
-    };
+    const data = (await resp.json()) as Record<string, unknown>;
 
-    // Normalize field names — never log the key value
-    const apiKey = data.api_key ?? data.apiKey ?? '';
-    const claimUrl = data.claim_url ?? data.claimUrl ?? '';
+    // Log response shape (keys only, never values) so we can see the field names in Vercel logs
+    console.log('Moltbook /register response keys:', Object.keys(data));
+    console.log('Moltbook /register status:', resp.status);
+
+    // Normalize field names — handle snake_case and camelCase variants
+    const apiKey =
+      (data.api_key as string | undefined) ??
+      (data.apiKey as string | undefined) ??
+      (data.key as string | undefined) ??
+      (data.token as string | undefined) ??
+      (data.moltbook_api_key as string | undefined) ??
+      '';
+
+    const claimUrl =
+      (data.claim_url as string | undefined) ??
+      (data.claimUrl as string | undefined) ??
+      (data.claim_link as string | undefined) ??
+      '';
+
+    if (!apiKey) {
+      console.log('Moltbook /register: could not find API key in response. Full response:', JSON.stringify(data));
+    }
 
     return NextResponse.json({ apiKey, claimUrl });
   } catch {
