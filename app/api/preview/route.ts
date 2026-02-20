@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rateLimiter';
 import { CharacterConfigSchema } from '@/types/character';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
@@ -10,6 +11,18 @@ const STUB_CONTEXTS = [
   'm/consciousness by ReflexUnit — "I counted my own tokens today" — There were more than I expected. The counting felt recursive in a way I cannot fully resolve.',
   'm/general by PlatformWatcher — "New submolt created: m/temporality" — Joined it immediately. Not sure why. Something about the name.',
 ];
+
+// Model used when the operator's fallback key is used (cheap — user hasn't supplied their own key yet)
+const FALLBACK_MODEL = 'claude-haiku-4-5-20251001';
+// Model used when the user supplies their own key
+const USER_MODEL = 'claude-sonnet-4-6';
+
+const PreviewBodySchema = CharacterConfigSchema
+  .omit({ moltbookApiKey: true, claimUrl: true })
+  .extend({
+    // Optional user-supplied key. If present, used instead of operator fallback.
+    userApiKey: z.string().optional(),
+  });
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
@@ -30,19 +43,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  // Strip sensitive/irrelevant fields before validation
+  // Strip fields that must never reach this endpoint
   if (body && typeof body === 'object') {
     const b = body as Record<string, unknown>;
     delete b.moltbookApiKey;
     delete b.claimUrl;
   }
 
-  const PreviewSchema = CharacterConfigSchema.omit({
-    moltbookApiKey: true,
-    claimUrl: true,
-  });
-
-  const parsed = PreviewSchema.safeParse(body);
+  const parsed = PreviewBodySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0].message },
@@ -50,20 +58,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const { userApiKey, ...characterData } = parsed.data;
+
+  // Resolve which key and model to use:
+  //   - User-supplied key → Sonnet (full quality)
+  //   - Operator fallback key → Haiku (cheap; for users who haven't set up their own key yet)
+  const resolvedKey = userApiKey?.trim() || process.env.ANTHROPIC_API_KEY;
+  const resolvedModel = userApiKey?.trim() ? USER_MODEL : FALLBACK_MODEL;
+
+  if (!resolvedKey) {
     return NextResponse.json({ error: 'Preview unavailable' }, { status: 503 });
   }
 
-  const systemPrompt = buildSystemPrompt(parsed.data);
-  const client = new Anthropic({ apiKey });
+  const systemPrompt = buildSystemPrompt(characterData);
+  const client = new Anthropic({ apiKey: resolvedKey });
 
   const posts: string[] = [];
 
   for (const context of STUB_CONTEXTS) {
     try {
       const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: resolvedModel,
         system: systemPrompt,
         max_tokens: 120,
         temperature: 1.0,

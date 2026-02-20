@@ -6,10 +6,11 @@ import { EnvVarTable } from '@/components/EnvVarTable';
 
 interface Props {
   config: CharacterConfig;
+  userApiKey: string;
 }
 
-export function Step7Deploy({ config }: Props) {
-  const envVars = buildEnvVars(config);
+export function Step7Deploy({ config, userApiKey }: Props) {
+  const envVars = buildEnvVars(config, userApiKey);
   const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_TEMPLATE_URL ?? '#';
 
   return (

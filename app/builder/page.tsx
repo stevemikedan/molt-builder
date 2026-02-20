@@ -52,6 +52,7 @@ export default function BuilderPage() {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState<CharacterConfig>(DEFAULT_CONFIG);
   const [nameAvailable, setNameAvailable] = useState(false);
+  const [userApiKey, setUserApiKey] = useState('');
 
   const isLast = step === STEPS.length - 1;
   const canNext = canAdvance(step, config, nameAvailable);
@@ -110,8 +111,14 @@ export default function BuilderPage() {
           {step === 2 && <Step3Voice config={config} setConfig={setConfig} />}
           {step === 3 && <Step4Interests config={config} setConfig={setConfig} />}
           {step === 4 && <Step5Register config={config} setConfig={setConfig} />}
-          {step === 5 && <Step6Preview config={config} />}
-          {step === 6 && <Step7Deploy config={config} />}
+          {step === 5 && (
+            <Step6Preview
+              config={config}
+              userApiKey={userApiKey}
+              setUserApiKey={setUserApiKey}
+            />
+          )}
+          {step === 6 && <Step7Deploy config={config} userApiKey={userApiKey} />}
         </div>
 
         {/* Navigation */}

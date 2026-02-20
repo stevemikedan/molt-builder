@@ -18,13 +18,14 @@ export interface EnvVarMap {
  * Convert a CharacterConfig into the environment variable map
  * used by the molt-agent-template Railway deployment.
  *
- * ANTHROPIC_API_KEY is always returned as a placeholder — the user
- * must supply their own key when deploying.
+ * If userApiKey is provided (entered during preview), it is pre-filled
+ * into ANTHROPIC_API_KEY so the user doesn't have to paste it again in Railway.
+ * Otherwise a placeholder is shown.
  */
-export function buildEnvVars(config: CharacterConfig): EnvVarMap {
+export function buildEnvVars(config: CharacterConfig, userApiKey?: string): EnvVarMap {
   return {
     MOLTBOOK_API_KEY: config.moltbookApiKey ?? '',
-    ANTHROPIC_API_KEY: '<your-anthropic-api-key>',
+    ANTHROPIC_API_KEY: userApiKey?.trim() || '<your-anthropic-api-key>',
     AGENT_NAME: config.name,
     AGENT_DESCRIPTION: config.description,
     AGENT_CORE_NATURE: config.coreNature,
