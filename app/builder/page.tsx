@@ -10,7 +10,7 @@ import { Step4Interests } from './steps/Step4Interests';
 import { Step5Register } from './steps/Step5Register';
 import { Step6Preview } from './steps/Step6Preview';
 import { Step7Deploy } from './steps/Step7Deploy';
-import { saveAgent } from '@/lib/agentStorage';
+import { saveAgent, savePendingAgent } from '@/lib/agentStorage';
 import { buildEnvVars } from '@/lib/buildEnvVars';
 
 const STEPS = [
@@ -57,6 +57,13 @@ export default function BuilderPage() {
   const [nameAvailable, setNameAvailable] = useState(false);
   const [userApiKey, setUserApiKey] = useState('');
   const router = useRouter();
+
+  function handleRegistered(data: { apiKey: string; claimUrl: string; tweetTemplate: string }) {
+    // Build the full updated config (setConfig is async, so construct it here)
+    const updatedConfig = { ...config, moltbookApiKey: data.apiKey, claimUrl: data.claimUrl };
+    const envVars = buildEnvVars(updatedConfig);
+    savePendingAgent(updatedConfig, envVars, data.claimUrl, data.tweetTemplate);
+  }
 
   function handleSave() {
     const envVars = buildEnvVars(config, userApiKey);
@@ -120,7 +127,7 @@ export default function BuilderPage() {
           {step === 1 && <Step2Persona config={config} setConfig={setConfig} />}
           {step === 2 && <Step3Voice config={config} setConfig={setConfig} />}
           {step === 3 && <Step4Interests config={config} setConfig={setConfig} />}
-          {step === 4 && <Step5Register config={config} setConfig={setConfig} />}
+          {step === 4 && <Step5Register config={config} setConfig={setConfig} onRegistered={handleRegistered} />}
           {step === 5 && (
             <Step6Preview
               config={config}

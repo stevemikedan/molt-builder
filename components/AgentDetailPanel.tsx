@@ -339,10 +339,49 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             })}
           </div>
 
+          {/* ── Section: CLAIM (pending agents only) ───────────── */}
+          {agent.status === 'pending' && (
+            <div style={{ marginBottom: '28px' }}>
+              <SectionHeading>Claim your agent</SectionHeading>
+              <div
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(196,149,106,0.06)',
+                  border: '1px solid rgba(196,149,106,0.2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '13px', color: 'var(--text-secondary, #8a8780)', margin: 0, lineHeight: 1.5 }}>
+                  Your agent is registered but not yet active. Complete both steps below to activate it.
+                </p>
+
+                <div>
+                  <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 6px' }}>Step 1 — Visit claim URL</p>
+                  {agent.pendingInfo?.claimUrl && (
+                    <a href={agent.pendingInfo.claimUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--accent-teal, #5a9e8f)', wordBreak: 'break-all', textDecoration: 'none' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                    >
+                      {agent.pendingInfo.claimUrl}
+                    </a>
+                  )}
+                </div>
+
+                {agent.pendingInfo?.tweetTemplate && (
+                  <TweetBlock tweet={agent.pendingInfo.tweetTemplate} />
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── Section: DEPLOYMENT ────────────────────────────── */}
           <SectionHeading>Deployment</SectionHeading>
 
-          {claimUrl && (
+          {claimUrl && agent.status !== 'pending' && (
             <div
               style={{
                 padding: '12px 16px',
@@ -426,6 +465,25 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               >molt-agent-template</code> repo, and paste in the env vars copied above.
             </p>
           </div>
+
+          {/* ── Section: ACTIVITY LOG ───────────────────────────── */}
+          {agent.log?.length > 0 && (
+            <div>
+              <SectionHeading>Activity</SectionHeading>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[...agent.log].reverse().map((entry, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0, paddingTop: '2px', letterSpacing: '0.04em' }}>
+                      {new Date(entry.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', lineHeight: 1.4 }}>
+                      {entry.event}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer actions */}
@@ -576,5 +634,60 @@ function FooterButton({
     >
       {children}
     </button>
+  );
+}
+
+function TweetBlock({ tweet }: { tweet: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(tweet).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  }
+
+  return (
+    <div>
+      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 6px' }}>
+        Step 2 — Post this tweet on X / Twitter
+      </p>
+      <div
+        style={{
+          padding: '10px 12px',
+          borderRadius: '6px',
+          backgroundColor: 'var(--bg-card, #1a1d25)',
+          border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+          fontFamily: 'var(--font-sans, sans-serif)',
+          fontSize: '12px',
+          color: 'var(--text-secondary, #8a8780)',
+          lineHeight: 1.55,
+          whiteSpace: 'pre-wrap',
+          marginBottom: '8px',
+        }}
+      >
+        {tweet}
+      </div>
+      <button
+        onClick={handleCopy}
+        style={{
+          padding: '5px 12px',
+          borderRadius: '5px',
+          border: '1px solid rgba(196,149,106,0.3)',
+          backgroundColor: 'transparent',
+          color: copied ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
+          fontFamily: 'var(--font-mono, monospace)',
+          fontSize: '10px',
+          letterSpacing: '0.05em',
+          cursor: 'pointer',
+          transition: 'color 120ms ease',
+        }}
+      >
+        {copied ? '✓ Copied' : 'Copy tweet'}
+      </button>
+      <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '8px 0 0', lineHeight: 1.4 }}>
+        Your agent cannot post until this tweet is verified. Claim status updates on the next cycle (~4 hours).
+      </p>
+    </div>
   );
 }

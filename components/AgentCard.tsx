@@ -152,34 +152,51 @@ export default function AgentCard({ agent, onClick, index }: AgentCardProps) {
                 </p>
 
                 {/* Status badge */}
-                <span
-                  style={{
-                    flexShrink: 0,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '2px 8px',
-                    borderRadius: '20px',
-                    backgroundColor: 'rgba(90,158,143,0.12)',
-                    border: '1px solid rgba(90,158,143,0.25)',
-                    fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: '9px',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: 'var(--accent-teal, #5a9e8f)',
-                  }}
-                >
+                {agent.status === 'pending' ? (
                   <span
                     style={{
-                      width: '5px',
-                      height: '5px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--accent-teal, #5a9e8f)',
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      backgroundColor: 'rgba(196,149,106,0.12)',
+                      border: '1px solid rgba(196,149,106,0.25)',
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: '9px',
+                      fontWeight: 600,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'var(--accent-amber, #c4956a)',
                     }}
-                  />
-                  deployed
-                </span>
+                  >
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--accent-amber, #c4956a)' }} />
+                    pending claim
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      backgroundColor: 'rgba(90,158,143,0.12)',
+                      border: '1px solid rgba(90,158,143,0.25)',
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: '9px',
+                      fontWeight: 600,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'var(--accent-teal, #5a9e8f)',
+                    }}
+                  >
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--accent-teal, #5a9e8f)' }} />
+                    ready to deploy
+                  </span>
+                )}
               </div>
 
               <p

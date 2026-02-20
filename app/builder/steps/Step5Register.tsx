@@ -7,11 +7,12 @@ import { CopyField } from '@/components/CopyField';
 interface Props {
   config: CharacterConfig;
   setConfig: (c: CharacterConfig) => void;
+  onRegistered?: (data: { apiKey: string; claimUrl: string; tweetTemplate: string }) => void;
 }
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
 
-export function Step5Register({ config, setConfig }: Props) {
+export function Step5Register({ config, setConfig, onRegistered }: Props) {
   const [status, setStatus] = useState<Status>(config.moltbookApiKey ? 'done' : 'idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [tweetTemplate, setTweetTemplate] = useState('');
@@ -47,12 +48,16 @@ export function Step5Register({ config, setConfig }: Props) {
         return;
       }
 
-      setTweetTemplate(data.tweetTemplate ?? '');
+      const claimUrl = data.claimUrl ?? '';
+      const tweetTemplate = data.tweetTemplate ?? '';
+      setTweetTemplate(tweetTemplate);
       setConfig({
         ...config,
         moltbookApiKey: data.apiKey,
-        claimUrl: data.claimUrl ?? '',
+        claimUrl,
       });
+      // Persist to localStorage immediately so data isn't lost if the tab closes
+      onRegistered?.({ apiKey: data.apiKey, claimUrl, tweetTemplate });
       setStatus('done');
     } catch {
       setErrorMsg('Network error — please try again.');
