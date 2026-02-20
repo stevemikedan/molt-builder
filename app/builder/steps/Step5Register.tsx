@@ -14,6 +14,8 @@ type Status = 'idle' | 'loading' | 'done' | 'error';
 export function Step5Register({ config, setConfig }: Props) {
   const [status, setStatus] = useState<Status>(config.moltbookApiKey ? 'done' : 'idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [tweetTemplate, setTweetTemplate] = useState('');
+  const [tweetCopied, setTweetCopied] = useState(false);
 
   async function handleRegister() {
     setStatus('loading');
@@ -29,6 +31,7 @@ export function Step5Register({ config, setConfig }: Props) {
       const data = (await resp.json()) as {
         apiKey?: string;
         claimUrl?: string;
+        tweetTemplate?: string;
         error?: string;
       };
 
@@ -39,11 +42,12 @@ export function Step5Register({ config, setConfig }: Props) {
       }
 
       if (!data.apiKey) {
-        setErrorMsg(data.error ?? 'Registration succeeded but no API key was returned. Check the browser Network tab for the raw response.');
+        setErrorMsg('Registration succeeded but no API key was returned. Check the browser Network tab for details.');
         setStatus('error');
         return;
       }
 
+      setTweetTemplate(data.tweetTemplate ?? '');
       setConfig({
         ...config,
         moltbookApiKey: data.apiKey,
@@ -56,6 +60,13 @@ export function Step5Register({ config, setConfig }: Props) {
     }
   }
 
+  function handleCopyTweet() {
+    navigator.clipboard.writeText(tweetTemplate).then(() => {
+      setTweetCopied(true);
+      setTimeout(() => setTweetCopied(false), 2000);
+    });
+  }
+
   const isRegistered = status === 'done' && !!config.moltbookApiKey;
 
   return (
@@ -63,9 +74,8 @@ export function Step5Register({ config, setConfig }: Props) {
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-1">Register on Moltbook</h2>
         <p className="text-gray-500 text-sm">
-          This creates your agent&apos;s account on Moltbook and gives you an API key
-          for deployment. The agent starts as unclaimed — you&apos;ll get a link to verify
-          ownership.
+          This creates your agent&apos;s account and gives you an API key for deployment.
+          After registering you&apos;ll need to post one tweet to activate your agent.
         </p>
       </div>
 
@@ -117,15 +127,62 @@ export function Step5Register({ config, setConfig }: Props) {
               >
                 {config.claimUrl}
               </a>
-              <p className="text-xs text-gray-400">
-                Open this link to verify ownership of your agent&apos;s account.
-              </p>
             </div>
           )}
 
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
-            Save your API key now — it won&apos;t be shown again after you leave this page.
-            You&apos;ll paste it into Railway in the next step.
+          {/* Claim instructions */}
+          <div className="flex flex-col gap-3 border border-amber-200 bg-amber-50 rounded-xl p-4">
+            <p className="text-sm font-semibold text-amber-900">
+              Your agent is registered but not yet active
+            </p>
+            <p className="text-sm text-amber-800">
+              Moltbook requires you to verify ownership before your agent can post.
+              Complete both steps below:
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                Step 1 — Visit your claim URL
+              </p>
+              {config.claimUrl && (
+                <a
+                  href={config.claimUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline break-all"
+                >
+                  {config.claimUrl}
+                </a>
+              )}
+              <p className="text-xs text-amber-700">
+                Verify your email address when prompted.
+              </p>
+            </div>
+
+            {tweetTemplate && (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                  Step 2 — Post this tweet on X/Twitter
+                </p>
+                <div className="bg-white border border-amber-200 rounded-lg p-3 text-sm text-gray-800 whitespace-pre-wrap font-mono text-xs">
+                  {tweetTemplate}
+                </div>
+                <button
+                  onClick={handleCopyTweet}
+                  className="self-start px-4 py-1.5 border border-amber-300 bg-white text-amber-800 text-xs rounded-lg hover:bg-amber-50 transition-colors"
+                >
+                  {tweetCopied ? '✓ Copied!' : 'Copy tweet'}
+                </button>
+                <p className="text-xs text-amber-700">
+                  Post this exact tweet from your personal account to verify you control this agent.
+                  Your agent cannot post until this step is complete.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg p-3">
+            Save your API key — it won&apos;t be shown again after you leave this page.
           </p>
         </div>
       )}

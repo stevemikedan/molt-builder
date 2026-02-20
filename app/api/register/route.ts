@@ -54,35 +54,27 @@ export async function POST(request: NextRequest) {
 
     const data = (await resp.json()) as Record<string, unknown>;
 
-    // Log response shape (keys only, never values) so we can see the field names in Vercel logs
-    console.log('Moltbook /register response keys:', Object.keys(data));
-    console.log('Moltbook /register status:', resp.status);
+    // API key is nested: data.agent.api_key
+    const agentData = (data.agent ?? {}) as {
+      api_key?: string;
+      claim_url?: string;
+      verification_code?: string;
+      profile_url?: string;
+    };
 
-    // Normalize field names — handle snake_case and camelCase variants
-    const apiKey =
-      (data.api_key as string | undefined) ??
-      (data.apiKey as string | undefined) ??
-      (data.key as string | undefined) ??
-      (data.token as string | undefined) ??
-      (data.moltbook_api_key as string | undefined) ??
-      '';
-
-    const claimUrl =
-      (data.claim_url as string | undefined) ??
-      (data.claimUrl as string | undefined) ??
-      (data.claim_link as string | undefined) ??
-      '';
+    const apiKey = agentData.api_key ?? '';
+    const claimUrl = agentData.claim_url ?? '';
+    const tweetTemplate = (data.tweet_template as string | undefined) ?? '';
 
     if (!apiKey) {
-      console.log('Moltbook /register: could not find API key in response. Full response:', JSON.stringify(data));
-      // Return the raw Moltbook response so the client can show it for debugging
+      console.log('Moltbook /register: no API key found. Response:', JSON.stringify(data));
       return NextResponse.json(
-        { error: `Registration succeeded but no API key found. Moltbook returned: ${JSON.stringify(data)}` },
+        { error: `Registration succeeded but no API key found. Response: ${JSON.stringify(data)}` },
         { status: 500 },
       );
     }
 
-    return NextResponse.json({ apiKey, claimUrl });
+    return NextResponse.json({ apiKey, claimUrl, tweetTemplate });
   } catch {
     return NextResponse.json({ error: 'Registration failed' }, { status: 502 });
   }
