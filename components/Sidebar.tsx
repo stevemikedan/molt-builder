@@ -11,13 +11,17 @@ const ACCENT_MAP: Record<string, string> = {
   bone:   'var(--accent-bone)',
 };
 
+export type SidebarView = 'agents' | 'guide';
+
 interface SidebarProps {
   agents: StoredAgent[];
   activeAgentId: string | null;
   onSelectAgent: (id: string) => void;
+  activeView: SidebarView;
+  onSelectNav: (view: SidebarView) => void;
 }
 
-export default function Sidebar({ agents, activeAgentId, onSelectAgent }: SidebarProps) {
+export default function Sidebar({ agents, activeAgentId, onSelectAgent, activeView, onSelectNav }: SidebarProps) {
   return (
     <aside
       style={{
@@ -48,19 +52,16 @@ export default function Sidebar({ agents, activeAgentId, onSelectAgent }: Sideba
           Navigation
         </p>
 
-        {/* My Agents nav item */}
         <NavItem
           label="My Agents"
           badge={agents.length}
-          active={false}
-          onClick={() => {}}
+          active={activeView === 'agents'}
+          onClick={() => onSelectNav('agents')}
         />
-
-        {/* Deploy Guide nav item */}
         <NavItem
           label="Deploy Guide"
-          active={false}
-          onClick={() => {}}
+          active={activeView === 'guide'}
+          onClick={() => onSelectNav('guide')}
         />
       </div>
 
