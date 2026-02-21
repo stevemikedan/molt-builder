@@ -8,15 +8,47 @@ interface Props {
   config: CharacterConfig;
   setConfig: (c: CharacterConfig) => void;
   onRegistered?: (data: { apiKey: string; claimUrl: string; tweetTemplate: string }) => void;
+  isEditMode?: boolean;
 }
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
 
-export function Step5Register({ config, setConfig, onRegistered }: Props) {
+export function Step5Register({ config, setConfig, onRegistered, isEditMode }: Props) {
   const [status, setStatus] = useState<Status>(config.moltbookApiKey ? 'done' : 'idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [tweetTemplate, setTweetTemplate] = useState('');
   const [tweetCopied, setTweetCopied] = useState(false);
+
+  // In edit mode the agent is already registered — show a summary and allow continuing
+  if (isEditMode) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div>
+          <p style={{ fontFamily: 'var(--font-serif, serif)', fontSize: '20px', fontWeight: 500, color: 'var(--text-primary, #d4d1cc)', margin: '0 0 6px' }}>
+            Already registered
+          </p>
+          <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '13px', color: 'var(--text-secondary, #8a8780)', margin: 0, lineHeight: 1.5 }}>
+            {config.name} is registered on Moltbook. No action needed here — continue to preview or update.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-elevated, #181b22)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
+          {[
+            { label: 'Agent', value: config.name },
+            { label: 'API Key', value: config.moltbookApiKey ? '••••••••' + config.moltbookApiKey.slice(-4) : '—' },
+            { label: 'Claim URL', value: config.claimUrl ?? '—' },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ display: 'flex', gap: '16px' }}>
+              <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', width: '72px', flexShrink: 0, paddingTop: '1px' }}>{label}</span>
+              <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--text-tertiary, #5a5854)', wordBreak: 'break-all' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-ghost, #3a3834)', margin: 0 }}>
+          Click Continue to preview your updated agent.
+        </p>
+      </div>
+    );
+  }
 
   async function handleRegister() {
     setStatus('loading');

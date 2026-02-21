@@ -7,6 +7,7 @@ interface Props {
   config: CharacterConfig;
   setConfig: (c: CharacterConfig) => void;
   onAvailabilityChange: (available: boolean) => void;
+  isEditMode?: boolean;
 }
 
 type Status = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error';
@@ -20,11 +21,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-export function Step1Name({ config, setConfig, onAvailabilityChange }: Props) {
+export function Step1Name({ config, setConfig, onAvailabilityChange, isEditMode }: Props) {
   const [nameStatus, setNameStatus] = useState<Status>('idle');
   const debouncedName = useDebounce(config.name, 600);
 
   useEffect(() => {
+    // In edit mode the name is locked — skip availability check
+    if (isEditMode) return;
+
     const name = debouncedName.trim();
 
     if (!name) {
@@ -58,7 +62,7 @@ export function Step1Name({ config, setConfig, onAvailabilityChange }: Props) {
         setNameStatus('error');
         onAvailabilityChange(false);
       });
-  }, [debouncedName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedName, isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statusEl = () => {
     switch (nameStatus) {
@@ -82,39 +86,58 @@ export function Step1Name({ config, setConfig, onAvailabilityChange }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Name your agent</h2>
-        <p className="text-gray-500 text-sm">
-          This will be your agent&apos;s Moltbook username. Choose carefully — it can&apos;t
-          be changed after registration.
+        <p style={{ fontFamily: 'var(--font-serif, serif)', fontSize: '20px', fontWeight: 500, color: 'var(--text-primary, #d4d1cc)', margin: '0 0 6px' }}>
+          {isEditMode ? 'Edit agent' : 'Name your agent'}
+        </p>
+        <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '13px', color: 'var(--text-secondary, #8a8780)', margin: 0, lineHeight: 1.5 }}>
+          {isEditMode
+            ? 'Your agent\'s Moltbook username is locked after registration. You can update the bio.'
+            : 'This will be your agent\'s Moltbook username. Choose carefully — it can\'t be changed after registration.'}
         </p>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-gray-700" htmlFor="name">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <label style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary, #8a8780)' }} htmlFor="name">
           Agent name
         </label>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <input
             id="name"
             type="text"
             value={config.name}
             onChange={e =>
-              setConfig({ ...config, name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })
+              !isEditMode && setConfig({ ...config, name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })
             }
+            disabled={isEditMode}
             placeholder="e.g. Striation"
             maxLength={20}
-            className="flex-1 min-w-[160px] border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            style={{
+              flex: 1,
+              minWidth: '160px',
+              border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+              borderRadius: '6px',
+              padding: '10px 12px',
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '13px',
+              backgroundColor: isEditMode ? 'var(--bg-elevated, #181b22)' : 'var(--bg-card, #1a1d25)',
+              color: isEditMode ? 'var(--text-tertiary, #5a5854)' : 'var(--text-primary, #d4d1cc)',
+              outline: 'none',
+              cursor: isEditMode ? 'not-allowed' : 'text',
+            }}
           />
-          {statusEl()}
+          {isEditMode ? (
+            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', letterSpacing: '0.06em' }}>
+              locked
+            </span>
+          ) : statusEl()}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-gray-700" htmlFor="description">
-          Short bio{' '}
-          <span className="text-gray-400 font-normal">(shown on profile)</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <label style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary, #8a8780)' }} htmlFor="description">
+          Short bio <span style={{ color: 'var(--text-ghost, #3a3834)', fontWeight: 400 }}>(shown on profile)</span>
         </label>
         <textarea
           id="description"
@@ -123,9 +146,22 @@ export function Step1Name({ config, setConfig, onAvailabilityChange }: Props) {
           placeholder="A brief description of what your agent is about…"
           maxLength={300}
           rows={3}
-          className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          style={{
+            border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+            borderRadius: '6px',
+            padding: '10px 12px',
+            fontFamily: 'var(--font-sans, sans-serif)',
+            fontSize: '13px',
+            backgroundColor: 'var(--bg-card, #1a1d25)',
+            color: 'var(--text-primary, #d4d1cc)',
+            resize: 'none',
+            outline: 'none',
+            lineHeight: 1.6,
+          }}
         />
-        <p className="text-xs text-gray-400 text-right">{config.description.length}/300</p>
+        <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', textAlign: 'right', margin: 0 }}>
+          {config.description.length}/300
+        </p>
       </div>
     </div>
   );
