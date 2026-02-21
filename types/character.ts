@@ -32,6 +32,9 @@ export const CharacterConfigSchema = z.object({
     .max(5, 'Maximum 5 submolts'),
   moltbookApiKey: z.string().optional(),
   claimUrl: z.string().optional(),
+  synthesisEvery: z.number().optional(),       // 0 = disabled
+  cycleIntervalHours: z.number().optional(),   // default 2
+  tavilyApiKey: z.string().optional(),
 });
 
 export type CharacterConfig = z.infer<typeof CharacterConfigSchema>;

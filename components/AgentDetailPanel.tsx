@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { StoredAgent, deleteAgent } from '@/lib/agentStorage';
+import { useRouter } from 'next/navigation';
+import { StoredAgent, deleteAgent, updateRailwayConfig, addLogEntry } from '@/lib/agentStorage';
+import { getRailwayToken } from '@/lib/railwayStorage';
 import { EnvVarMap } from '@/lib/buildEnvVars';
 
 const ACCENT_MAP: Record<string, string> = {
@@ -33,10 +35,22 @@ interface LiveActivity {
   profile: Record<string, unknown> | null;
 }
 
+type PushState = 'idle' | 'pushing' | 'success' | 'error';
+
 export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDetailPanelProps) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [activity, setActivity] = useState<LiveActivity | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
+
+  // Railway connect form
+  const [rwProjectId, setRwProjectId] = useState('');
+  const [rwServiceId, setRwServiceId] = useState('');
+  const [rwEnvironmentId, setRwEnvironmentId] = useState('production');
+
+  // Railway push state
+  const [pushState, setPushState] = useState<PushState>('idle');
+  const [pushError, setPushError] = useState('');
 
   useEffect(() => {
     if (!agent) return;
@@ -488,6 +502,166 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             </p>
           </div>
 
+          {/* ── Section: RAILWAY ──────────────────────────────── */}
+          <SectionHeading>Railway</SectionHeading>
+          {!agent.railwayConfig ? (
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-card, #1a1d25)',
+                border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                marginBottom: '28px',
+              }}
+            >
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Connect a Railway service to push env vars and redeploy without copy-paste.
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
+                Project ID
+              </p>
+              <input
+                value={rwProjectId}
+                onChange={e => setRwProjectId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                style={{ width: '100%', marginBottom: '10px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
+              />
+              <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
+                Service ID
+              </p>
+              <input
+                value={rwServiceId}
+                onChange={e => setRwServiceId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                style={{ width: '100%', marginBottom: '10px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
+              />
+              <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
+                Environment ID (default: production)
+              </p>
+              <input
+                value={rwEnvironmentId}
+                onChange={e => setRwEnvironmentId(e.target.value)}
+                placeholder="production"
+                style={{ width: '100%', marginBottom: '12px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
+              />
+              <button
+                disabled={!rwProjectId.trim() || !rwServiceId.trim()}
+                onClick={() => {
+                  updateRailwayConfig(agent.id, {
+                    projectId: rwProjectId.trim(),
+                    serviceId: rwServiceId.trim(),
+                    environmentId: rwEnvironmentId.trim() || 'production',
+                  });
+                  // Reload page to reflect changes
+                  window.location.reload();
+                }}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '5px',
+                  border: '1px solid var(--accent-teal, #5a9e8f)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--accent-teal, #5a9e8f)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '10px',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  opacity: (!rwProjectId.trim() || !rwServiceId.trim()) ? 0.4 : 1,
+                }}
+              >
+                Connect
+              </button>
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '8px 0 0', lineHeight: 1.4 }}>
+                IDs are in your Railway service URL: railway.app/project/[projectId]/service/[serviceId]
+              </p>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-card, #1a1d25)',
+                border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                marginBottom: '28px',
+              }}
+            >
+              <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
+                Connected service
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--text-secondary, #8a8780)', margin: '0 0 12px', wordBreak: 'break-all' }}>
+                {agent.railwayConfig.projectId} / {agent.railwayConfig.serviceId}
+              </p>
+              <button
+                disabled={pushState === 'pushing'}
+                onClick={async () => {
+                  const token = getRailwayToken();
+                  if (!token) {
+                    setPushError('No Railway token set. Add it in Settings below.');
+                    setPushState('error');
+                    return;
+                  }
+                  setPushState('pushing');
+                  setPushError('');
+                  try {
+                    const resp = await fetch('/api/railway-push', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        envVars: envVars,
+                        railwayToken: token,
+                        projectId: agent.railwayConfig!.projectId,
+                        serviceId: agent.railwayConfig!.serviceId,
+                        environmentId: agent.railwayConfig!.environmentId,
+                      }),
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                      addLogEntry(agent.id, 'Pushed to Railway — redeploy triggered');
+                      setPushState('success');
+                      setTimeout(() => setPushState('idle'), 4000);
+                    } else {
+                      setPushError(data.error ?? 'Push failed');
+                      setPushState('error');
+                    }
+                  } catch (e) {
+                    setPushError(e instanceof Error ? e.message : 'Network error');
+                    setPushState('error');
+                  }
+                }}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '5px',
+                  border: `1px solid ${pushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : pushState === 'error' ? 'var(--accent-rust, #a06b5a)' : 'var(--accent-amber, #c4956a)'}`,
+                  backgroundColor: 'transparent',
+                  color: pushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : pushState === 'error' ? 'var(--accent-rust, #a06b5a)' : 'var(--accent-amber, #c4956a)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '10px',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  cursor: pushState === 'pushing' ? 'wait' : 'pointer',
+                  marginBottom: '8px',
+                }}
+              >
+                {pushState === 'pushing' ? 'Pushing…' : pushState === 'success' ? '✓ Deployed' : 'Push to Railway'}
+              </button>
+              {pushState === 'error' && pushError && (
+                <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--accent-rust, #a06b5a)', margin: '4px 0 8px', lineHeight: 1.4 }}>
+                  {pushError}
+                </p>
+              )}
+              <br />
+              <button
+                onClick={() => {
+                  updateRailwayConfig(agent.id, undefined);
+                  window.location.reload();
+                }}
+                style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', cursor: 'pointer', letterSpacing: '0.06em', textDecoration: 'underline' }}
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
+
           {/* ── Section: LIVE ACTIVITY ──────────────────────────── */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -584,8 +758,18 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             borderTop: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
             display: 'flex',
             gap: '10px',
+            justifyContent: 'space-between',
           }}
         >
+          <FooterButton
+            variant="outline"
+            onClick={() => {
+              onClose();
+              router.push(`/builder?edit=${agent.id}`);
+            }}
+          >
+            Edit Agent →
+          </FooterButton>
           <FooterButton
             variant="danger"
             onClick={() => {
@@ -595,7 +779,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               onDeleted?.();
             }}
           >
-            Delete Agent
+            Delete
           </FooterButton>
         </div>
       </div>

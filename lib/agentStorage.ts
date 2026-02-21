@@ -24,6 +24,11 @@ export interface StoredAgent {
   accentColor: string; // 'amber' | 'teal' | 'violet' | 'rust' | 'slate' | 'bone'
   sigil: string;
   log: AgentLogEntry[];
+  railwayConfig?: {
+    projectId: string;
+    serviceId: string;
+    environmentId: string;
+  };
 }
 
 const ACCENT_COLORS = ['amber', 'teal', 'violet', 'rust', 'slate', 'bone'] as const;
@@ -35,10 +40,14 @@ const STORAGE_KEY = 'molt_agents_v1';
  * storing it in the browser would leave it on-disk indefinitely.
  */
 function _redactForStorage(envVars: EnvVarMap): EnvVarMap {
-  return {
+  const redacted: EnvVarMap = {
     ...envVars,
     ANTHROPIC_API_KEY: '<your-anthropic-api-key>',
   };
+  if ('TAVILY_API_KEY' in redacted && redacted.TAVILY_API_KEY && !redacted.TAVILY_API_KEY.startsWith('<')) {
+    redacted.TAVILY_API_KEY = '<your-tavily-api-key>';
+  }
+  return redacted;
 }
 
 export function getAgents(): StoredAgent[] {
@@ -148,4 +157,22 @@ export function addLogEntry(id: string, event: string): void {
 
 export function deleteAgent(id: string): void {
   _write(getAgents().filter(a => a.id !== id));
+}
+
+export function updateRailwayConfig(
+  id: string,
+  config: StoredAgent['railwayConfig'],
+): void {
+  const agents = getAgents();
+  const idx = agents.findIndex(a => a.id === id);
+  if (idx < 0) return;
+  agents[idx] = {
+    ...agents[idx],
+    railwayConfig: config,
+    log: [
+      ...(agents[idx].log ?? []),
+      _logEntry(config ? 'Connected Railway service' : 'Disconnected Railway service'),
+    ],
+  };
+  _write(agents);
 }

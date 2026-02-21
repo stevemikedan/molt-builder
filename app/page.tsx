@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { StoredAgent, getAgents } from '@/lib/agentStorage';
+import { getRailwayToken, setRailwayToken } from '@/lib/railwayStorage';
 import AppHeader from '@/components/AppHeader';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import AgentCard from '@/components/AgentCard';
@@ -13,6 +14,15 @@ export default function DashboardPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<SidebarView>('agents');
   const router = useRouter();
+
+  // Railway token settings
+  const [railwayTokenInput, setRailwayTokenInput] = useState('');
+  const [railwayTokenSaved, setRailwayTokenSaved] = useState(false);
+
+  useEffect(() => {
+    const t = getRailwayToken();
+    if (t) setRailwayTokenInput(t);
+  }, []);
 
   useEffect(() => {
     setAgents(getAgents());
@@ -77,6 +87,108 @@ export default function DashboardPage() {
                     onClick={() => setActiveId(prev => prev === agent.id ? null : agent.id)}
                   />
                 ))}
+              </div>
+
+              {/* Settings — Railway Token */}
+              <div style={{ marginTop: '48px', maxWidth: '480px' }}>
+                <p style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-ghost, #3a3834)',
+                  marginBottom: '10px',
+                }}>
+                  Settings
+                </p>
+                <div style={{
+                  padding: '16px 18px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-surface, #111318)',
+                  border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                }}>
+                  <p style={{
+                    fontFamily: 'var(--font-sans, sans-serif)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: 'var(--text-primary, #d4d1cc)',
+                    margin: '0 0 4px',
+                  }}>
+                    Railway Token
+                  </p>
+                  <p style={{
+                    fontFamily: 'var(--font-sans, sans-serif)',
+                    fontSize: '11px',
+                    color: 'var(--text-tertiary, #5a5854)',
+                    margin: '0 0 10px',
+                    lineHeight: 1.5,
+                  }}>
+                    Personal API token from railway.app/account/tokens. Stored locally in your browser.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="password"
+                      value={railwayTokenInput}
+                      onChange={e => { setRailwayTokenInput(e.target.value); setRailwayTokenSaved(false); }}
+                      placeholder={getRailwayToken() ? `••••••••${getRailwayToken()!.slice(-4)}` : 'rw_xxxxxxxxxxxx…'}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        borderRadius: '5px',
+                        border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                        backgroundColor: 'var(--bg-elevated, #181b22)',
+                        color: 'var(--text-primary, #d4d1cc)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '11px',
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        setRailwayToken(railwayTokenInput.trim());
+                        setRailwayTokenSaved(true);
+                        setTimeout(() => setRailwayTokenSaved(false), 2000);
+                      }}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: '5px',
+                        border: '1px solid var(--accent-teal, #5a9e8f)',
+                        backgroundColor: 'transparent',
+                        color: railwayTokenSaved ? 'var(--accent-teal, #5a9e8f)' : 'var(--text-secondary, #8a8780)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '10px',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {railwayTokenSaved ? '✓ Saved' : 'Save'}
+                    </button>
+                    {getRailwayToken() && (
+                      <button
+                        onClick={() => {
+                          setRailwayToken('');
+                          setRailwayTokenInput('');
+                        }}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '5px',
+                          border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                          backgroundColor: 'transparent',
+                          color: 'var(--text-ghost, #3a3834)',
+                          fontFamily: 'var(--font-mono, monospace)',
+                          fontSize: '10px',
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </>
           )}
