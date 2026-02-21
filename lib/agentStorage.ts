@@ -29,6 +29,18 @@ export interface StoredAgent {
 const ACCENT_COLORS = ['amber', 'teal', 'violet', 'rust', 'slate', 'bone'] as const;
 const STORAGE_KEY = 'molt_agents_v1';
 
+/**
+ * Strip secrets that must not be persisted to localStorage.
+ * ANTHROPIC_API_KEY is only needed in React state during the session —
+ * storing it in the browser would leave it on-disk indefinitely.
+ */
+function _redactForStorage(envVars: EnvVarMap): EnvVarMap {
+  return {
+    ...envVars,
+    ANTHROPIC_API_KEY: '<your-anthropic-api-key>',
+  };
+}
+
 export function getAgents(): StoredAgent[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -70,7 +82,7 @@ export function savePendingAgent(
     status: 'pending',
     pendingInfo: { claimUrl, tweetTemplate },
     config,
-    envVars,
+    envVars: _redactForStorage(envVars),
     accentColor: base?.accentColor ?? ACCENT_COLORS[existing.filter((_, i) => i !== idx).length % ACCENT_COLORS.length],
     sigil: config.name.charAt(0).toUpperCase(),
     log: [
@@ -105,7 +117,7 @@ export function saveAgent(config: CharacterConfig, envVars: EnvVarMap): StoredAg
     status: 'ready',
     pendingInfo: base?.pendingInfo, // keep claim info for reference
     config,
-    envVars,
+    envVars: _redactForStorage(envVars),
     accentColor: base?.accentColor ?? ACCENT_COLORS[existing.filter((_, i) => i !== idx).length % ACCENT_COLORS.length],
     sigil: config.name.charAt(0).toUpperCase(),
     log: [
