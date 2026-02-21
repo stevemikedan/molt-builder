@@ -74,7 +74,7 @@ export default function Sidebar({ agents, activeAgentId, onSelectAgent, activeVi
         }}
       />
 
-      {/* ── DEPLOYED section ───────────────────────────────────── */}
+      {/* ── AGENTS section ─────────────────────────────────────── */}
       <div style={{ padding: '8px 16px 20px', flex: 1 }}>
         <p
           style={{
@@ -87,7 +87,7 @@ export default function Sidebar({ agents, activeAgentId, onSelectAgent, activeVi
             marginBottom: '6px',
           }}
         >
-          Deployed
+          Agents
         </p>
 
         {agents.length === 0 && (
@@ -271,7 +271,7 @@ function AgentListItem({ agent, isActive, onClick, accentColor }: AgentListItemP
             letterSpacing: '0.05em',
           }}
         >
-          deployed
+          {agent.status === 'pending' ? 'pending claim' : 'configured'}
         </p>
       </div>
     </button>

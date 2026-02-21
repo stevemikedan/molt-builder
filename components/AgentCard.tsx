@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { StoredAgent } from '@/lib/agentStorage';
 
 const ACCENT_MAP: Record<string, string> = {
@@ -33,6 +34,7 @@ function daysSince(isoDate: string): number {
 }
 
 export default function AgentCard({ agent, onClick, index }: AgentCardProps) {
+  const router = useRouter();
   const accentColor = ACCENT_MAP[agent.accentColor] ?? ACCENT_MAP.amber;
   const accentDim   = ACCENT_DIM_MAP[agent.accentColor] ?? ACCENT_DIM_MAP.amber;
   const age         = daysSince(agent.createdAt);
@@ -194,7 +196,7 @@ export default function AgentCard({ agent, onClick, index }: AgentCardProps) {
                     }}
                   >
                     <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--accent-teal, #5a9e8f)' }} />
-                    ready to deploy
+                    configured
                   </span>
                 )}
               </div>
@@ -261,18 +263,82 @@ export default function AgentCard({ agent, onClick, index }: AgentCardProps) {
             </div>
           )}
 
-          {/* Meta row */}
+          {/* Meta + action row */}
           <div
             style={{
               borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.04))',
               paddingTop: '12px',
               display: 'flex',
-              gap: '18px',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
             }}
           >
-            <MetaItem label="Age" value={age === 0 ? 'today' : `${age}d`} />
-            <MetaItem label="Schedule" value="Every 4h" />
-            <MetaItem label="Keywords" value={String(kwCount)} />
+            <div style={{ display: 'flex', gap: '18px' }}>
+              <MetaItem label="Age" value={age === 0 ? 'today' : `${age}d`} />
+              <MetaItem label="Keywords" value={String(kwCount)} />
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/builder?edit=${agent.id}`);
+                }}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '5px',
+                  border: '1px solid var(--border-active, rgba(255,255,255,0.15))',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-secondary, #8a8780)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '10px',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'background-color 120ms ease, color 120ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-elevated, #181b22)';
+                  e.currentTarget.style.color = 'var(--text-primary, #d4d1cc)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary, #8a8780)';
+                }}
+              >
+                Edit
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick();
+                }}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '5px',
+                  border: `1px solid ${accentColor}`,
+                  backgroundColor: 'transparent',
+                  color: accentColor,
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '10px',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'background-color 120ms ease',
+                  opacity: 0.85,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0.85';
+                }}
+              >
+                Manage
+              </button>
+            </div>
           </div>
         </div>
       </div>
