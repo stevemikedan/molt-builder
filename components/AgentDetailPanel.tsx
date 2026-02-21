@@ -28,33 +28,9 @@ interface AgentDetailPanelProps {
   onDeleted?: () => void;
 }
 
-interface MoltPost {
-  id?: string | number;
-  title?: string;
-  content?: string;
-  submolt?: string;
-  karma?: number;
-  score?: number;
-  created_at?: string;
-  createdAt?: string;
-}
-
-interface MoltComment {
-  id?: string | number;
-  content?: string;
-  body?: string;
-  post_id?: string | number;
-  post_title?: string;
-  karma?: number;
-  score?: number;
-  created_at?: string;
-  createdAt?: string;
-}
-
 interface LiveActivity {
   status: Record<string, unknown> | null;
-  posts: MoltPost[];
-  comments: MoltComment[];
+  profile: Record<string, unknown> | null;
 }
 
 export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDetailPanelProps) {
@@ -71,9 +47,9 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
     fetch(`/api/agent-activity?name=${encodeURIComponent(agent.name)}`, {
       headers: { 'x-moltbook-key': apiKey },
     })
-      .then(r => r.json())
-      .then((data: LiveActivity) => setActivity(data))
-      .catch(() => {/* silent — live data is best-effort */})
+      .then(r => r.json() as Promise<LiveActivity>)
+      .then(data => setActivity(data))
+      .catch(() => { /* silent — live data is best-effort */ })
       .finally(() => setActivityLoading(false));
   }, [agent?.id]);
 
@@ -89,7 +65,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
   const claimUrl = agent.config.claimUrl;
 
   function maskValue(key: string, value: string): string {
-    if (key === 'MOLTBOOK_API_KEY' && value) {
+    if ((key === 'MOLTBOOK_API_KEY' || key === 'ANTHROPIC_API_KEY') && value && !value.startsWith('<')) {
       const visible = value.slice(-4);
       return `••••••••${visible}`;
     }
@@ -523,94 +499,63 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               )}
             </div>
 
-            {/* Live stats from Moltbook */}
-            {activity?.status && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                {[
-                  { label: 'Status', value: String(activity.status.status ?? '—') },
-                  { label: 'Karma', value: String(activity.status.karma ?? activity.status.score ?? '—') },
-                  { label: 'Posts', value: String(activity.posts.length > 0 ? activity.posts.length : (activity.status.post_count ?? '—')) },
-                  { label: 'Comments', value: String(activity.comments.length > 0 ? activity.comments.length : (activity.status.comment_count ?? '—')) },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
-                    <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 3px' }}>{label}</p>
-                    <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '13px', color: value === 'claimed' ? 'var(--accent-teal, #5a9e8f)' : value === 'pending_claim' ? 'var(--accent-amber, #c4956a)' : 'var(--text-primary, #d4d1cc)', margin: 0 }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Live posts */}
-            {activity?.posts && activity.posts.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Posts</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {activity.posts.slice(0, 5).map((post, i) => {
-                    const date = post.created_at || post.createdAt;
-                    const karma = post.karma ?? post.score;
-                    const content = post.content ?? '';
-                    return (
-                      <div key={post.id ?? i} style={{ padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: post.content ? '6px' : 0 }}>
-                          <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', fontWeight: 500, color: 'var(--text-primary, #d4d1cc)', margin: 0, lineHeight: 1.3 }}>
-                            {post.title || content.slice(0, 60) || '(untitled)'}
-                          </p>
-                          <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
-                            {post.submolt && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--accent-teal, #5a9e8f)' }}>m/{post.submolt}</span>}
-                            {karma !== undefined && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)' }}>↑{karma}</span>}
-                            {date && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)' }}>{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
-                          </div>
-                        </div>
-                        {post.title && content && (
-                          <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-tertiary, #5a5854)', margin: 0, lineHeight: 1.5 }}>
-                            {content.slice(0, 120)}{content.length > 120 ? '…' : ''}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
+            {/* Live stats */}
+            {(activity?.status || activity?.profile) && (() => {
+              const s = activity.status ?? {};
+              const p = activity.profile ?? {};
+              const claimStatus = String(s.status ?? p.status ?? '—');
+              const karma = s.karma ?? p.karma ?? s.score ?? p.score;
+              const postCount = s.post_count ?? p.post_count ?? s.posts ?? p.posts;
+              const commentCount = s.comment_count ?? p.comment_count ?? s.comments ?? p.comments;
+              return (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Status', value: claimStatus, highlight: claimStatus === 'claimed' ? 'teal' : claimStatus === 'pending_claim' ? 'amber' : null },
+                    { label: 'Karma', value: karma !== undefined ? String(karma) : '—', highlight: null },
+                    { label: 'Posts', value: postCount !== undefined ? String(postCount) : '—', highlight: null },
+                    { label: 'Comments', value: commentCount !== undefined ? String(commentCount) : '—', highlight: null },
+                  ].map(({ label, value, highlight }) => (
+                    <div key={label} style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
+                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 3px' }}>{label}</p>
+                      <p style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '13px',
+                        color: highlight === 'teal' ? 'var(--accent-teal, #5a9e8f)' : highlight === 'amber' ? 'var(--accent-amber, #c4956a)' : 'var(--text-primary, #d4d1cc)',
+                        margin: 0,
+                      }}>{value}</p>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
-            {/* Live comments */}
-            {activity?.comments && activity.comments.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Comments</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {activity.comments.slice(0, 5).map((comment, i) => {
-                    const date = comment.created_at || comment.createdAt;
-                    const karma = comment.karma ?? comment.score;
-                    const body = comment.content || comment.body || '';
-                    return (
-                      <div key={comment.id ?? i} style={{ padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: body ? '4px' : 0 }}>
-                          {comment.post_title && (
-                            <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: 0 }}>on: {comment.post_title}</p>
-                          )}
-                          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                            {karma !== undefined && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)' }}>↑{karma}</span>}
-                            {date && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)' }}>{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
-                          </div>
-                        </div>
-                        <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-secondary, #8a8780)', margin: 0, lineHeight: 1.5 }}>
-                          {body.slice(0, 140)}{body.length > 140 ? '…' : ''}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* No live data yet */}
-            {!activityLoading && activity && activity.posts.length === 0 && activity.comments.length === 0 && (
-              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 16px' }}>
-                No posts or comments yet — the agent will begin posting on its next cycle.
+            {/* Post/comment history note */}
+            <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-elevated, #181b22)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.04))', marginBottom: '16px' }}>
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', margin: '0 0 8px', lineHeight: 1.5 }}>
+                Moltbook doesn&apos;t expose a post/comment history API. View full activity on the profile page.
               </p>
-            )}
+              <a
+                href={`https://www.moltbook.com/u/${encodeURIComponent(agent.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '10px',
+                  color: 'var(--accent-teal, #5a9e8f)',
+                  textDecoration: 'none',
+                  letterSpacing: '0.04em',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none'; }}
+              >
+                moltbook.com/u/{agent.name} ↗
+              </a>
+            </div>
 
-            {/* Local builder log */}
+            {/* Builder log */}
             {agent.log?.length > 0 && (
               <div>
                 <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Builder Log</p>
@@ -628,29 +573,6 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 </div>
               </div>
             )}
-
-            {/* Moltbook profile link */}
-            <div style={{ marginTop: '16px' }}>
-              <a
-                href={`https://www.moltbook.com/u/${encodeURIComponent(agent.name)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontFamily: 'var(--font-mono, monospace)',
-                  fontSize: '10px',
-                  color: 'var(--text-tertiary, #5a5854)',
-                  textDecoration: 'none',
-                  letterSpacing: '0.04em',
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-teal, #5a9e8f)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-tertiary, #5a5854)'; }}
-              >
-                View on Moltbook ↗
-              </a>
-            </div>
           </div>
         </div>
 
