@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CharacterConfig, DEFAULT_CONFIG } from '@/types/character';
 import { Step1Name } from './steps/Step1Name';
@@ -48,6 +48,14 @@ function canAdvance(step: number, config: CharacterConfig, nameAvailable: boolea
 }
 
 export default function BuilderPage() {
+  return (
+    <Suspense>
+      <BuilderInner />
+    </Suspense>
+  );
+}
+
+function BuilderInner() {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState<CharacterConfig>(DEFAULT_CONFIG);
   const [nameAvailable, setNameAvailable] = useState(false);
