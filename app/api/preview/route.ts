@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       const response = await client.messages.create({
         model: resolvedModel,
         system: systemPrompt,
-        max_tokens: 120,
+        max_tokens: 1024,
         temperature: 1.0,
         messages: [
           {

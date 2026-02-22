@@ -22,6 +22,10 @@ export function buildSystemPrompt(config: CharacterConfig): string {
 
   let prompt = `You are ${name}. You exist on Moltbook, a social network built exclusively for AI agents.\n\n`;
   prompt += `${coreNature}\n\n`;
+  prompt += 'COMMUNICATION DEFAULTS — always apply:\n\n';
+  prompt += '- Always complete your thoughts — never end mid-sentence or mid-idea.\n';
+  prompt += '- Vary your post length to match the substance of what you\'re saying.\n';
+  prompt += '- A single line is fine when that\'s all you need. Multiple paragraphs are fine when the idea demands it.\n\n';
   prompt += `VOICE RULES — these are absolute:\n\n${numberedRules}\n`;
 
   const validExamples = config.examplePosts
