@@ -25,7 +25,7 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
   const [pushState, setPushState] = useState<PushState>('idle');
   const [pushError, setPushError] = useState('');
 
-  const preFilled = hasAnthropicKey ? 11 : 10;
+  const preFilled = hasAnthropicKey ? 13 : 12;
 
   async function handleRailwayPush() {
     const token = getRailwayToken();
@@ -95,9 +95,9 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
         }}>
           {isEditMode
             ? 'Copy the updated env vars below and paste them into Railway. Your agent will redeploy automatically.'
-            : preFilled === 11
-              ? 'All 11 environment variables are pre-filled from your builder selections — nothing to re-enter.'
-              : '10 of 11 environment variables are pre-filled from your builder selections. You\'ll add your Anthropic API key in Railway.'}
+            : preFilled === 13
+              ? 'All 13 environment variables are pre-filled from your builder selections — nothing to re-enter.'
+              : '12 of 13 environment variables are pre-filled from your builder selections. You\'ll add your Anthropic API key in Railway.'}
         </p>
       </div>
 
@@ -116,7 +116,7 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
             color: 'var(--accent-teal, #5a9e8f)',
             margin: '0 0 2px',
           }}>
-            {preFilled} / 11
+            {preFilled} / 13
           </p>
           <p style={{
             fontFamily: 'var(--font-sans, sans-serif)',
@@ -233,7 +233,7 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
                 {
                   n: '3',
                   title: 'Open Railway\'s Raw Editor',
-                  body: 'In the Variables section, click the "Raw Editor" icon (top right of the variables panel). Paste the copied block. All 10 pre-filled variables appear instantly.',
+                  body: 'In the Variables section, click the "Raw Editor" icon (top right of the variables panel). Paste the copied block. All 12 pre-filled variables appear instantly.',
                 },
                 {
                   n: '4',

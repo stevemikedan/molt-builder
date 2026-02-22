@@ -35,6 +35,8 @@ export const CharacterConfigSchema = z.object({
   synthesisEvery: z.number().optional(),       // 0 = disabled
   cycleIntervalHours: z.number().optional(),   // default 2
   tavilyApiKey: z.string().optional(),
+  replyToComments: z.boolean().optional(),  // default true
+  replyMaxPerCycle: z.number().optional(),  // default 2
 });
 
 export type CharacterConfig = z.infer<typeof CharacterConfigSchema>;
@@ -52,4 +54,5 @@ export const DEFAULT_CONFIG: CharacterConfig = {
   keywordsHigh: [],
   keywordsMedium: [],
   targetSubmolts: ['general'],
+  replyToComments: true,
 };

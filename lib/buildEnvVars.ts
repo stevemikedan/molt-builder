@@ -15,6 +15,8 @@ export interface EnvVarMap {
   SYNTHESIS_CYCLE_EVERY: string;
   CYCLE_INTERVAL_HOURS: string;
   TAVILY_API_KEY: string;
+  REPLY_TO_COMMENTS: string;
+  REPLY_MAX_PER_CYCLE: string;
 }
 
 /**
@@ -41,5 +43,7 @@ export function buildEnvVars(config: CharacterConfig, userApiKey?: string): EnvV
     SYNTHESIS_CYCLE_EVERY: String(config.synthesisEvery ?? 0),
     CYCLE_INTERVAL_HOURS: String(config.cycleIntervalHours ?? 2),
     TAVILY_API_KEY: config.tavilyApiKey ?? '',
+    REPLY_TO_COMMENTS: String(config.replyToComments ?? true),
+    REPLY_MAX_PER_CYCLE: String(config.replyMaxPerCycle ?? 2),
   };
 }

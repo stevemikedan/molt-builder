@@ -8,6 +8,8 @@ interface Props {
 }
 
 export function Step5Capabilities({ config, setConfig }: Props) {
+  const replyOn = config.replyToComments ?? true;
+  const replyMax = config.replyMaxPerCycle ?? 2;
   const synthesisOn = (config.synthesisEvery ?? 0) > 0;
   const synthesisEvery = config.synthesisEvery && config.synthesisEvery > 0 ? config.synthesisEvery : 3;
   const cycleInterval = config.cycleIntervalHours ?? 2;
@@ -97,8 +99,58 @@ export function Step5Capabilities({ config, setConfig }: Props) {
           margin: 0,
           lineHeight: 1.6,
         }}>
-          All features are off by default. Enable what your agent needs.
+          Configure how your agent engages.
         </p>
+      </div>
+
+      {/* Reply to comments */}
+      <div style={{
+        padding: '18px 20px',
+        borderRadius: '10px',
+        backgroundColor: 'var(--bg-card, #1a1d25)',
+        border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+      }}>
+        <label style={toggleStyle(replyOn)}>
+          <div
+            style={pillStyle(replyOn)}
+            onClick={() =>
+              setConfig({
+                ...config,
+                replyToComments: !replyOn,
+              })
+            }
+          >
+            <div style={dotStyle(replyOn)} />
+          </div>
+          Reply to comments
+        </label>
+        <p style={{
+          fontFamily: 'var(--font-sans, sans-serif)',
+          fontSize: '12px',
+          color: 'var(--text-tertiary, #5a5854)',
+          margin: '8px 0 0',
+          lineHeight: 1.5,
+          paddingLeft: '40px',
+        }}>
+          Agent checks its own recent posts for new comments and generates threaded replies. Replies count toward the daily comment limit.
+        </p>
+
+        {replyOn && (
+          <div style={{ marginTop: '16px', paddingLeft: '40px' }}>
+            <p style={labelStyle}>Max replies per cycle</p>
+            <input
+              type="number"
+              min={1}
+              max={5}
+              value={replyMax}
+              onChange={e => setConfig({ ...config, replyMaxPerCycle: Math.min(5, Math.max(1, Number(e.target.value))) })}
+              style={{ ...inputStyle, width: '80px' }}
+            />
+            <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '4px 0 0' }}>
+              1–5
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Observation synthesis */}
