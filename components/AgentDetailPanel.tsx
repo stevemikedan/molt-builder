@@ -36,7 +36,6 @@ interface LiveActivity {
   publicProfile: Record<string, unknown> | null;
   recentContent: Record<string, unknown>[] | null;
   recentPosts: Record<string, unknown>[] | null;
-  _probes?: Record<string, unknown>;
 }
 
 type PushState = 'idle' | 'pushing' | 'success' | 'error';
@@ -1012,7 +1011,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       Raw API response
                     </summary>
                     <pre style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-tertiary, #5a5854)', backgroundColor: 'var(--bg-elevated, #181b22)', padding: '10px', borderRadius: '6px', overflow: 'auto', maxHeight: '200px', marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                      {JSON.stringify({ status: s, profile: p, publicProfile: pub, recentPosts: activity?.recentPosts ?? [], _probes: activity?._probes ?? {}, recentContent: activity?.recentContent ?? [] }, null, 2)}
+                      {JSON.stringify({ status: s, profile: p, publicProfile: pub, recentPosts: (activity?.recentPosts ?? []).length, recentContent: (activity?.recentContent ?? []).length }, null, 2)}
                     </pre>
                   </details>
                 </>
@@ -1052,7 +1051,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                           return (
                             <a
                               key={commentId || i}
-                              href={postId ? `https://www.moltbook.com/posts/${postId}` : '#'}
+                              href={postId ? `https://www.moltbook.com/m/${submoltName || 'general'}/post/${postId}` : '#'}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
@@ -1110,7 +1109,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                           return (
                             <a
                               key={postId || i}
-                              href={postId ? `https://www.moltbook.com/posts/${postId}` : '#'}
+                              href={postId ? `https://www.moltbook.com/m/${submolt || 'general'}/post/${postId}` : '#'}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{

@@ -75,31 +75,17 @@ export async function GET(request: NextRequest) {
   const agentObj = (profileData?.agent ?? profileData) as Record<string, unknown> | null;
   const agentId = agentObj?.id ? String(agentObj.id) : '';
 
-  // Probe multiple endpoints for the agent's posts
-  const [searchResults, agentPosts, agentPostsById, userPosts] = await Promise.all([
-    name ? moltGetList('/search', apiKey, { q: name, type: 'posts', limit: '20' }) : Promise.resolve([]),
-    name ? moltGetList(`/agents/${name}/posts`, apiKey, { limit: '20', sort: 'new' }) : Promise.resolve([]),
-    agentId ? moltGetList(`/agents/${agentId}/posts`, apiKey, { limit: '20', sort: 'new' }) : Promise.resolve([]),
+  // Fetch agent's own posts and search mentions in parallel
+  const [recentPosts, searchResults] = await Promise.all([
     name ? moltGetList('/posts', apiKey, { author: name, limit: '20', sort: 'new' }) : Promise.resolve([]),
+    name ? moltGetList('/search', apiKey, { q: name, type: 'posts', limit: '10' }) : Promise.resolve([]),
   ]);
-
-  // Use whichever source returned data
-  const recentPosts = agentPosts.length > 0 ? agentPosts
-    : agentPostsById.length > 0 ? agentPostsById
-    : userPosts.length > 0 ? userPosts
-    : searchResults;
 
   return NextResponse.json({
     status: statusData,
     profile: profileData,
     publicProfile: publicProfile,
-    recentContent: searchResults,
     recentPosts,
-    _probes: {
-      searchCount: searchResults.length,
-      agentPostsCount: agentPosts.length,
-      agentPostsByIdCount: agentPostsById.length,
-      userPostsCount: userPosts.length,
-    },
+    recentContent: searchResults,
   });
 }
