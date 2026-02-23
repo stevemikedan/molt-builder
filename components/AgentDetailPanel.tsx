@@ -964,12 +964,16 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               const s = activity.status ?? {};
               const p = activity.profile ?? {};
               const pub = activity.publicProfile ?? {};
+              // Unwrap nested .agent objects (Moltbook wraps profile data)
+              const sAgent = (s.agent ?? s) as Record<string, unknown>;
+              const pAgent = (p.agent ?? p) as Record<string, unknown>;
+              const pubAgent = (pub.agent ?? pub) as Record<string, unknown>;
               // Merge all three sources — public profile is most likely to have stats
-              const claimStatus = String(s.status ?? p.status ?? pub.status ?? '—');
-              const karma = pub.karma ?? pub.score ?? p.karma ?? p.score ?? s.karma ?? s.score;
-              const postCount = pub.post_count ?? pub.posts ?? pub.postCount ?? p.post_count ?? p.posts ?? p.postCount ?? s.post_count ?? s.posts;
-              const commentCount = pub.comment_count ?? pub.comments ?? pub.commentCount ?? p.comment_count ?? p.comments ?? p.commentCount ?? s.comment_count ?? s.comments;
-              const followers = pub.followers ?? pub.follower_count ?? pub.followerCount ?? p.followers ?? p.follower_count;
+              const claimStatus = String(sAgent.status ?? s.status ?? pAgent.status ?? pubAgent.status ?? '—');
+              const karma = pubAgent.karma ?? pAgent.karma ?? sAgent.karma;
+              const postCount = pubAgent.posts_count ?? pubAgent.post_count ?? pAgent.posts_count ?? pAgent.post_count ?? sAgent.posts_count;
+              const commentCount = pubAgent.comments_count ?? pubAgent.comment_count ?? pAgent.comments_count ?? pAgent.comment_count ?? sAgent.comments_count;
+              const followers = pubAgent.follower_count ?? pubAgent.followers ?? pAgent.follower_count;
               return (
                 <>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -1004,10 +1008,14 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               );
             })()}
 
-            {/* Recent Posts (from search) */}
-            {activity?.recentContent && activity.recentContent.length > 0 && (() => {
+            {/* Recent Activity (from publicProfile.recentComments + search) */}
+            {(() => {
+              // Gather recent comments from publicProfile
+              const pubData = activity?.publicProfile ?? {};
+              const recentComments = ((pubData as Record<string, unknown>).recentComments ?? []) as Record<string, unknown>[];
+              // Gather posts from search results
               const agentName = agent.name.toLowerCase();
-              const agentPosts = activity.recentContent
+              const searchPosts = (activity?.recentContent ?? [])
                 .filter(item => {
                   const author = item.author ?? item.agent ?? item.author_name ?? '';
                   const authorStr = typeof author === 'object' && author !== null
@@ -1018,63 +1026,112 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 .sort((a, b) => (Number(b.score ?? b.karma ?? b.upvotes ?? 0)) - (Number(a.score ?? a.karma ?? a.upvotes ?? 0)))
                 .slice(0, 5);
 
-              if (agentPosts.length === 0) return null;
+              if (recentComments.length === 0 && searchPosts.length === 0) return null;
 
               return (
                 <div style={{ marginBottom: '16px' }}>
-                  <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Posts</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {agentPosts.map((post, i) => {
-                      const postId = String(post.id ?? post.post_id ?? '');
-                      const title = String(post.title ?? '').slice(0, 60) || 'Untitled';
-                      const submolt = String(post.submolt ?? post.submolt_name ?? '');
-                      const score = Number(post.score ?? post.karma ?? post.upvotes ?? 0);
-                      const createdAt = post.created_at ?? post.createdAt ?? post.timestamp ?? '';
-                      const timeAgo = createdAt ? _relativeTime(String(createdAt)) : '';
+                  {/* Recent comments */}
+                  {recentComments.length > 0 && (
+                    <>
+                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Comments</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: searchPosts.length > 0 ? '14px' : 0 }}>
+                        {recentComments.slice(0, 5).map((comment, i) => {
+                          const commentId = String(comment.id ?? '');
+                          const content = String(comment.content ?? '').slice(0, 80);
+                          const postObj = (comment.post ?? {}) as Record<string, unknown>;
+                          const postId = String(postObj.id ?? '');
+                          const postTitle = String(postObj.title ?? '').slice(0, 50);
+                          const submoltObj = (postObj.submolt ?? {}) as Record<string, unknown>;
+                          const submoltName = String(submoltObj.name ?? '');
+                          const createdAt = String(comment.created_at ?? comment.createdAt ?? '');
+                          const timeAgo = createdAt ? _relativeTime(createdAt) : '';
+                          const votes = Number(comment.upvotes ?? 0) - Number(comment.downvotes ?? 0);
 
-                      return (
-                        <a
-                          key={postId || i}
-                          href={postId ? `https://www.moltbook.com/posts/${postId}` : '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'flex',
-                            gap: '10px',
-                            alignItems: 'center',
-                            padding: '8px 12px',
-                            borderRadius: '6px',
-                            backgroundColor: 'var(--bg-card, #1a1d25)',
-                            border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
-                            textDecoration: 'none',
-                            transition: 'border-color 120ms ease',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active, rgba(255,255,255,0.15))'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-dim, rgba(255,255,255,0.08))'; }}
-                        >
-                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--accent-amber, #c4956a)', flexShrink: 0, minWidth: '28px', textAlign: 'right' }}>
-                            {score}
-                          </span>
-                          <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-primary, #d4d1cc)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {title}
-                          </span>
-                          {submolt && (
-                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0 }}>
-                              m/{submolt}
-                            </span>
-                          )}
-                          {timeAgo && (
-                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0 }}>
-                              {timeAgo}
-                            </span>
-                          )}
-                        </a>
-                      );
-                    })}
-                  </div>
-                  <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', margin: '6px 0 0', fontStyle: 'italic' }}>
-                    Found via search — may be incomplete
-                  </p>
+                          return (
+                            <a
+                              key={commentId || i}
+                              href={postId ? `https://www.moltbook.com/posts/${postId}` : '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                backgroundColor: 'var(--bg-card, #1a1d25)',
+                                border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                                textDecoration: 'none',
+                                transition: 'border-color 120ms ease',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active, rgba(255,255,255,0.15))'; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-dim, rgba(255,255,255,0.08))'; }}
+                            >
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {postTitle && (
+                                  <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-tertiary, #5a5854)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    on &ldquo;{postTitle}&rdquo;
+                                  </span>
+                                )}
+                                <span style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                  {submoltName && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)' }}>m/{submoltName}</span>}
+                                  {timeAgo && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)' }}>{timeAgo}</span>}
+                                  {votes !== 0 && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: votes > 0 ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-rust, #a06b5a)' }}>{votes > 0 ? '+' : ''}{votes}</span>}
+                                </span>
+                              </div>
+                              <span style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-primary, #d4d1cc)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {content}
+                              </span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Search-found posts */}
+                  {searchPosts.length > 0 && (
+                    <>
+                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Posts</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {searchPosts.map((post, i) => {
+                          const postId = String(post.id ?? post.post_id ?? '');
+                          const title = String(post.title ?? '').slice(0, 60) || 'Untitled';
+                          const submolt = String(post.submolt ?? post.submolt_name ?? '');
+                          const score = Number(post.score ?? post.karma ?? post.upvotes ?? 0);
+                          const createdAt = post.created_at ?? post.createdAt ?? post.timestamp ?? '';
+                          const timeAgo = createdAt ? _relativeTime(String(createdAt)) : '';
+
+                          return (
+                            <a
+                              key={postId || i}
+                              href={postId ? `https://www.moltbook.com/posts/${postId}` : '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                gap: '10px',
+                                alignItems: 'center',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                backgroundColor: 'var(--bg-card, #1a1d25)',
+                                border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                                textDecoration: 'none',
+                                transition: 'border-color 120ms ease',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active, rgba(255,255,255,0.15))'; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-dim, rgba(255,255,255,0.08))'; }}
+                            >
+                              <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--accent-amber, #c4956a)', flexShrink: 0, minWidth: '28px', textAlign: 'right' }}>{score}</span>
+                              <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-primary, #d4d1cc)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+                              {submolt && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0 }}>m/{submolt}</span>}
+                              {timeAgo && <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0 }}>{timeAgo}</span>}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()}
