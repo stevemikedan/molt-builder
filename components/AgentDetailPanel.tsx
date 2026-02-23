@@ -971,17 +971,25 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               // Merge all three sources — public profile is most likely to have stats
               const claimStatus = String(sAgent.status ?? s.status ?? pAgent.status ?? pubAgent.status ?? '—');
               const karma = pubAgent.karma ?? pAgent.karma ?? sAgent.karma;
-              const postCount = pubAgent.posts_count ?? pubAgent.post_count ?? pAgent.posts_count ?? pAgent.post_count ?? sAgent.posts_count;
-              const commentCount = pubAgent.comments_count ?? pubAgent.comment_count ?? pAgent.comments_count ?? pAgent.comment_count ?? sAgent.comments_count;
+              const rawPostCount = pubAgent.posts_count ?? pubAgent.post_count ?? pAgent.posts_count ?? pAgent.post_count ?? sAgent.posts_count;
+              const rawCommentCount = pubAgent.comments_count ?? pubAgent.comment_count ?? pAgent.comments_count ?? pAgent.comment_count ?? sAgent.comments_count;
               const followers = pubAgent.follower_count ?? pubAgent.followers ?? pAgent.follower_count;
+              // Moltbook API may report 0 despite having activity — use recentComments as floor
+              const recentCommentsRaw = ((pub as Record<string, unknown>).recentComments ?? []) as unknown[];
+              const commentDisplay = (Number(rawCommentCount) || 0) > 0
+                ? String(rawCommentCount)
+                : recentCommentsRaw.length > 0 ? `${recentCommentsRaw.length}+` : '0';
+              const postDisplay = (Number(rawPostCount) || 0) > 0
+                ? String(rawPostCount)
+                : '—';
               return (
                 <>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                     {[
                       { label: 'Status', value: claimStatus, highlight: claimStatus === 'claimed' ? 'teal' : claimStatus === 'pending_claim' ? 'amber' : null },
                       { label: 'Karma', value: karma !== undefined && karma !== null ? String(karma) : '—', highlight: null },
-                      { label: 'Posts', value: postCount !== undefined && postCount !== null ? String(postCount) : '—', highlight: null },
-                      { label: 'Comments', value: commentCount !== undefined && commentCount !== null ? String(commentCount) : '—', highlight: null },
+                      { label: 'Posts', value: postDisplay, highlight: null },
+                      { label: 'Comments', value: commentDisplay, highlight: null },
                       ...(followers !== undefined && followers !== null ? [{ label: 'Followers', value: String(followers), highlight: null as string | null }] : []),
                     ].map(({ label, value, highlight }) => (
                       <div key={label} style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
@@ -1001,7 +1009,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       Raw API response
                     </summary>
                     <pre style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-tertiary, #5a5854)', backgroundColor: 'var(--bg-elevated, #181b22)', padding: '10px', borderRadius: '6px', overflow: 'auto', maxHeight: '200px', marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                      {JSON.stringify({ status: s, profile: p, publicProfile: pub }, null, 2)}
+                      {JSON.stringify({ status: s, profile: p, publicProfile: pub, recentContent: activity?.recentContent ?? [] }, null, 2)}
                     </pre>
                   </details>
                 </>
