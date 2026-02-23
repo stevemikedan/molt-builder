@@ -257,7 +257,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             }}
           >
             <ConfigTile label="Name" value={agent.name} />
-            <ConfigTile label="Post Schedule" value="Every 4h ±20min" />
+            <ConfigTile label="Post Schedule" value="Every 2h ±10min" />
             <ConfigTile
               label="Description"
               value={agent.description}
@@ -480,8 +480,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 lineHeight: 1.55,
               }}
             >
-              Deploy via Railway using the env vars above. Create a new project
-              from the{' '}
+              Deploy via Railway using the env vars above. Click &ldquo;Deploy on Railway&rdquo; from the builder (Step 7) or create a new project from the{' '}
               <a
                 href="https://railway.app"
                 target="_blank"
@@ -490,7 +489,8 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               >
                 Railway dashboard
               </a>
-              , add the <code
+              , connect the{' '}
+              <code
                 style={{
                   fontFamily: 'var(--font-mono, monospace)',
                   fontSize: '11px',
@@ -498,7 +498,25 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                   padding: '1px 5px',
                   borderRadius: '3px',
                 }}
-              >molt-agent-template</code> repo, and paste in the env vars copied above.
+              >molt-agent-template</code>{' '}
+              repo, and paste in the env vars. For web-enriched synthesis posts, add a{' '}
+              <a
+                href="https://app.tavily.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--accent-teal, #5a9e8f)', textDecoration: 'none' }}
+              >
+                Tavily API key
+              </a>{' '}
+              and set <code
+                style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '11px',
+                  backgroundColor: 'var(--bg-elevated, #181b22)',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                }}
+              >SYNTHESIS_CYCLE_EVERY</code> to a number &gt; 0.
             </p>
           </div>
 
@@ -514,8 +532,13 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 marginBottom: '28px',
               }}
             >
-              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', margin: '0 0 12px', lineHeight: 1.5 }}>
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', margin: '0 0 6px', lineHeight: 1.5 }}>
                 Connect a Railway service to push env vars and redeploy without copy-paste.
+              </p>
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                First, make sure you&apos;ve saved a{' '}
+                <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-teal, #5a9e8f)', textDecoration: 'none' }}>Railway API token</a>
+                {' '}in the Settings section on the main dashboard.
               </p>
               <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
                 Project ID
@@ -524,8 +547,11 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 value={rwProjectId}
                 onChange={e => setRwProjectId(e.target.value)}
                 placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                style={{ width: '100%', marginBottom: '10px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
+                style={{ width: '100%', marginBottom: '4px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
               />
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                From your Railway dashboard URL: railway.app/project/<strong>[this-id]</strong>/...
+              </p>
               <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
                 Service ID
               </p>
@@ -533,8 +559,11 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 value={rwServiceId}
                 onChange={e => setRwServiceId(e.target.value)}
                 placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                style={{ width: '100%', marginBottom: '10px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
+                style={{ width: '100%', marginBottom: '4px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
               />
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                Click your service in Railway, then find the ID in the URL: .../service/<strong>[this-id]</strong>
+              </p>
               <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
                 Environment ID (default: production)
               </p>
@@ -571,9 +600,6 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               >
                 Connect
               </button>
-              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '8px 0 0', lineHeight: 1.4 }}>
-                IDs are in your Railway service URL: railway.app/project/[projectId]/service/[serviceId]
-              </p>
             </div>
           ) : (
             <div
@@ -960,7 +986,7 @@ function TweetBlock({ tweet }: { tweet: string }) {
         {copied ? '✓ Copied' : 'Copy tweet'}
       </button>
       <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '8px 0 0', lineHeight: 1.4 }}>
-        Your agent cannot post until this tweet is verified. Claim status updates on the next cycle (~4 hours).
+        Your agent cannot post until this tweet is verified. Claim status updates on the next cycle (~2 hours).
       </p>
     </div>
   );
