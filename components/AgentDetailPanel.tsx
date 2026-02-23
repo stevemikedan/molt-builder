@@ -1051,7 +1051,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                           return (
                             <a
                               key={commentId || i}
-                              href={postId ? `https://www.moltbook.com/m/${submoltName || 'general'}/post/${postId}` : '#'}
+                              href={postId ? `https://www.moltbook.com/post/${postId}` : '#'}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
@@ -1109,7 +1109,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                           return (
                             <a
                               key={postId || i}
-                              href={postId ? `https://www.moltbook.com/m/${submolt || 'general'}/post/${postId}` : '#'}
+                              href={postId ? `https://www.moltbook.com/post/${postId}` : '#'}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
