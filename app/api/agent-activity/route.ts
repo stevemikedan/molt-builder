@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BASE = 'https://www.moltbook.com/api/v1';
 
-async function moltGet(path: string, apiKey: string): Promise<Record<string, unknown> | null> {
+async function moltGet(path: string, apiKey: string, params?: Record<string, string>): Promise<Record<string, unknown> | null> {
   try {
-    const resp = await fetch(`${BASE}${path}`, {
+    let url = `${BASE}${path}`;
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      url += `?${qs}`;
+    }
+    const resp = await fetch(url, {
       headers: { Authorization: `Bearer ${apiKey}` },
       cache: 'no-store',
     });
@@ -20,24 +25,29 @@ async function moltGet(path: string, apiKey: string): Promise<Record<string, unk
  * GET /api/agent-activity?name=ExuvianShell
  * Header: x-moltbook-key: <moltbook api key>
  *
- * Fetches live status and profile data from Moltbook.
- * Note: Moltbook's public API does not expose post/comment history endpoints.
- * Stats (karma, post count) come from /agents/me and /agents/status.
+ * Fetches live status, profile, and public profile data from Moltbook.
+ * Calls three endpoints:
+ *   /agents/status  — claim status
+ *   /agents/me      — authenticated profile
+ *   /agents/profile — public profile with stats (karma, post/comment counts)
  */
 export async function GET(request: NextRequest) {
   const apiKey = request.headers.get('x-moltbook-key') ?? '';
+  const name = request.nextUrl.searchParams.get('name') ?? '';
 
   if (!apiKey) {
     return NextResponse.json({ error: 'Missing API key' }, { status: 400 });
   }
 
-  const [statusData, profileData] = await Promise.all([
+  const [statusData, profileData, publicProfile] = await Promise.all([
     moltGet('/agents/status', apiKey),
     moltGet('/agents/me', apiKey),
+    name ? moltGet('/agents/profile', apiKey, { name }) : Promise.resolve(null),
   ]);
 
   return NextResponse.json({
     status: statusData,
     profile: profileData,
+    publicProfile: publicProfile,
   });
 }

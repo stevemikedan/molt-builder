@@ -33,6 +33,7 @@ interface AgentDetailPanelProps {
 interface LiveActivity {
   status: Record<string, unknown> | null;
   profile: Record<string, unknown> | null;
+  publicProfile: Record<string, unknown> | null;
 }
 
 type PushState = 'idle' | 'pushing' | 'success' | 'error';
@@ -700,32 +701,47 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             </div>
 
             {/* Live stats */}
-            {(activity?.status || activity?.profile) && (() => {
+            {(activity?.status || activity?.profile || activity?.publicProfile) && (() => {
               const s = activity.status ?? {};
               const p = activity.profile ?? {};
-              const claimStatus = String(s.status ?? p.status ?? '—');
-              const karma = s.karma ?? p.karma ?? s.score ?? p.score;
-              const postCount = s.post_count ?? p.post_count ?? s.posts ?? p.posts;
-              const commentCount = s.comment_count ?? p.comment_count ?? s.comments ?? p.comments;
+              const pub = activity.publicProfile ?? {};
+              // Merge all three sources — public profile is most likely to have stats
+              const claimStatus = String(s.status ?? p.status ?? pub.status ?? '—');
+              const karma = pub.karma ?? pub.score ?? p.karma ?? p.score ?? s.karma ?? s.score;
+              const postCount = pub.post_count ?? pub.posts ?? pub.postCount ?? p.post_count ?? p.posts ?? p.postCount ?? s.post_count ?? s.posts;
+              const commentCount = pub.comment_count ?? pub.comments ?? pub.commentCount ?? p.comment_count ?? p.comments ?? p.commentCount ?? s.comment_count ?? s.comments;
+              const followers = pub.followers ?? pub.follower_count ?? pub.followerCount ?? p.followers ?? p.follower_count;
               return (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                  {[
-                    { label: 'Status', value: claimStatus, highlight: claimStatus === 'claimed' ? 'teal' : claimStatus === 'pending_claim' ? 'amber' : null },
-                    { label: 'Karma', value: karma !== undefined ? String(karma) : '—', highlight: null },
-                    { label: 'Posts', value: postCount !== undefined ? String(postCount) : '—', highlight: null },
-                    { label: 'Comments', value: commentCount !== undefined ? String(commentCount) : '—', highlight: null },
-                  ].map(({ label, value, highlight }) => (
-                    <div key={label} style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
-                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 3px' }}>{label}</p>
-                      <p style={{
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontSize: '13px',
-                        color: highlight === 'teal' ? 'var(--accent-teal, #5a9e8f)' : highlight === 'amber' ? 'var(--accent-amber, #c4956a)' : 'var(--text-primary, #d4d1cc)',
-                        margin: 0,
-                      }}>{value}</p>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Status', value: claimStatus, highlight: claimStatus === 'claimed' ? 'teal' : claimStatus === 'pending_claim' ? 'amber' : null },
+                      { label: 'Karma', value: karma !== undefined && karma !== null ? String(karma) : '—', highlight: null },
+                      { label: 'Posts', value: postCount !== undefined && postCount !== null ? String(postCount) : '—', highlight: null },
+                      { label: 'Comments', value: commentCount !== undefined && commentCount !== null ? String(commentCount) : '—', highlight: null },
+                      ...(followers !== undefined && followers !== null ? [{ label: 'Followers', value: String(followers), highlight: null as string | null }] : []),
+                    ].map(({ label, value, highlight }) => (
+                      <div key={label} style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-card, #1a1d25)', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))' }}>
+                        <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 3px' }}>{label}</p>
+                        <p style={{
+                          fontFamily: 'var(--font-mono, monospace)',
+                          fontSize: '13px',
+                          color: highlight === 'teal' ? 'var(--accent-teal, #5a9e8f)' : highlight === 'amber' ? 'var(--accent-amber, #c4956a)' : 'var(--text-primary, #d4d1cc)',
+                          margin: 0,
+                        }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Debug: raw API responses — remove after confirming field names */}
+                  <details style={{ marginBottom: '16px' }}>
+                    <summary style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', cursor: 'pointer', letterSpacing: '0.06em' }}>
+                      Raw API response
+                    </summary>
+                    <pre style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-tertiary, #5a5854)', backgroundColor: 'var(--bg-elevated, #181b22)', padding: '10px', borderRadius: '6px', overflow: 'auto', maxHeight: '200px', marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      {JSON.stringify({ status: s, profile: p, publicProfile: pub }, null, 2)}
+                    </pre>
+                  </details>
+                </>
               );
             })()}
 
