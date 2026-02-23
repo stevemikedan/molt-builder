@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { StoredAgent, deleteAgent, updateRailwayConfig, addLogEntry } from '@/lib/agentStorage';
+import { StoredAgent, deleteAgent, updateRailwayConfig, updateDirection, addLogEntry } from '@/lib/agentStorage';
 import { getRailwayToken } from '@/lib/railwayStorage';
-import { EnvVarMap } from '@/lib/buildEnvVars';
+import { EnvVarMap, mergeDirectionIntoEnvVars } from '@/lib/buildEnvVars';
 
 const ACCENT_MAP: Record<string, string> = {
   amber:  'var(--accent-amber)',
@@ -34,6 +34,7 @@ interface LiveActivity {
   status: Record<string, unknown> | null;
   profile: Record<string, unknown> | null;
   publicProfile: Record<string, unknown> | null;
+  recentContent: Record<string, unknown>[] | null;
 }
 
 type PushState = 'idle' | 'pushing' | 'success' | 'error';
@@ -52,6 +53,16 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
   // Railway push state
   const [pushState, setPushState] = useState<PushState>('idle');
   const [pushError, setPushError] = useState('');
+
+  // Direction state
+  const [dirFocusTopics, setDirFocusTopics] = useState<string[]>(agent?.direction?.focusTopics ?? []);
+  const [dirPriorityPosts, setDirPriorityPosts] = useState<string[]>(agent?.direction?.priorityPosts ?? []);
+  const [dirSubmoltFocus, setDirSubmoltFocus] = useState(agent?.direction?.submoltFocus ?? '');
+  const [dirExtraHigh, setDirExtraHigh] = useState<string[]>(agent?.direction?.extraKeywordsHigh ?? []);
+  const [dirExtraMedium, setDirExtraMedium] = useState<string[]>(agent?.direction?.extraKeywordsMedium ?? []);
+  const [dirPushState, setDirPushState] = useState<PushState>('idle');
+  const [dirPushError, setDirPushError] = useState('');
+  const [dirPostInput, setDirPostInput] = useState('');
 
   useEffect(() => {
     if (!agent) return;
@@ -689,6 +700,254 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             </div>
           )}
 
+          {/* ── Section: DIRECTION ─────────────────────────────── */}
+          {agent.railwayConfig && (
+            <div style={{ marginBottom: '28px' }}>
+              <SectionHeading>Direction</SectionHeading>
+              <div
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-card, #1a1d25)',
+                  border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                }}
+              >
+                <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: 0, lineHeight: 1.5 }}>
+                  Guide your agent&apos;s behavior. Changes take effect after Railway redeploy (~1 minute).
+                </p>
+
+                {/* Focus Topics */}
+                <DirectionField label="Focus Topics">
+                  <DirectionTagInput
+                    tags={dirFocusTopics}
+                    onChange={setDirFocusTopics}
+                    placeholder="e.g. consciousness, memory"
+                  />
+                </DirectionField>
+
+                {/* Priority Posts */}
+                <DirectionField label="Priority Posts">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {dirPriorityPosts.map(pid => (
+                      <div key={pid} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--text-secondary, #8a8780)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pid}</span>
+                        <button
+                          onClick={() => setDirPriorityPosts(prev => prev.filter(p => p !== pid))}
+                          style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text-ghost, #3a3834)', cursor: 'pointer' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        value={dirPostInput}
+                        onChange={e => setDirPostInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && dirPostInput.trim()) {
+                            const id = dirPostInput.trim().replace(/.*\/posts\//, '');
+                            if (id && !dirPriorityPosts.includes(id)) {
+                              setDirPriorityPosts(prev => [...prev, id]);
+                            }
+                            setDirPostInput('');
+                          }
+                        }}
+                        placeholder="Paste post URL or ID"
+                        style={{ flex: 1, padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '10px' }}
+                      />
+                      <button
+                        onClick={() => {
+                          const id = dirPostInput.trim().replace(/.*\/posts\//, '');
+                          if (id && !dirPriorityPosts.includes(id)) {
+                            setDirPriorityPosts(prev => [...prev, id]);
+                          }
+                          setDirPostInput('');
+                        }}
+                        style={{ padding: '5px 10px', borderRadius: '4px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'transparent', color: 'var(--text-secondary, #8a8780)', fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', cursor: 'pointer', letterSpacing: '0.06em' }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </DirectionField>
+
+                {/* Submolt Focus */}
+                <DirectionField label="Submolt Focus">
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {(agent.config.targetSubmolts ?? []).map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setDirSubmoltFocus(prev => prev === s ? '' : s)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          border: `1px solid ${dirSubmoltFocus === s ? 'var(--accent-teal, #5a9e8f)' : 'var(--border-dim, rgba(255,255,255,0.08))'}`,
+                          backgroundColor: dirSubmoltFocus === s ? 'rgba(90,158,143,0.1)' : 'transparent',
+                          color: dirSubmoltFocus === s ? 'var(--accent-teal, #5a9e8f)' : 'var(--text-secondary, #8a8780)',
+                          fontFamily: 'var(--font-mono, monospace)',
+                          fontSize: '10px',
+                          cursor: 'pointer',
+                          transition: 'all 120ms ease',
+                        }}
+                      >
+                        m/{s}
+                      </button>
+                    ))}
+                    {dirSubmoltFocus && (
+                      <span style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', alignSelf: 'center' }}>70% bias</span>
+                    )}
+                  </div>
+                </DirectionField>
+
+                {/* Extra Keywords */}
+                <DirectionField label="Extra Keywords (High)">
+                  <DirectionTagInput
+                    tags={dirExtraHigh}
+                    onChange={setDirExtraHigh}
+                    placeholder="High-priority keywords"
+                  />
+                </DirectionField>
+                <DirectionField label="Extra Keywords (Medium)">
+                  <DirectionTagInput
+                    tags={dirExtraMedium}
+                    onChange={setDirExtraMedium}
+                    placeholder="Medium-priority keywords"
+                  />
+                </DirectionField>
+
+                {/* Push / Clear buttons */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                  <button
+                    disabled={dirPushState === 'pushing'}
+                    onClick={async () => {
+                      const token = getRailwayToken();
+                      if (!token) {
+                        setDirPushError('No Railway token set.');
+                        setDirPushState('error');
+                        return;
+                      }
+                      const direction = {
+                        focusTopics: dirFocusTopics,
+                        priorityPosts: dirPriorityPosts,
+                        submoltFocus: dirSubmoltFocus,
+                        extraKeywordsHigh: dirExtraHigh,
+                        extraKeywordsMedium: dirExtraMedium,
+                        lastPushedAt: new Date().toISOString(),
+                      };
+                      updateDirection(agent.id, direction);
+                      const merged = mergeDirectionIntoEnvVars(envVars, direction);
+                      setDirPushState('pushing');
+                      setDirPushError('');
+                      try {
+                        const resp = await fetch('/api/railway-push', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            envVars: merged,
+                            railwayToken: token,
+                            projectId: agent.railwayConfig!.projectId,
+                            serviceId: agent.railwayConfig!.serviceId,
+                            environmentId: agent.railwayConfig!.environmentId,
+                          }),
+                        });
+                        const data = await resp.json();
+                        if (data.ok) {
+                          addLogEntry(agent.id, 'Direction pushed to Railway');
+                          setDirPushState('success');
+                          setTimeout(() => setDirPushState('idle'), 4000);
+                        } else {
+                          setDirPushError(data.error ?? 'Push failed');
+                          setDirPushState('error');
+                        }
+                      } catch (e) {
+                        setDirPushError(e instanceof Error ? e.message : 'Network error');
+                        setDirPushState('error');
+                      }
+                    }}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: '5px',
+                      border: `1px solid ${dirPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)'}`,
+                      backgroundColor: 'transparent',
+                      color: dirPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: '10px',
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      cursor: dirPushState === 'pushing' ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {dirPushState === 'pushing' ? 'Pushing…' : dirPushState === 'success' ? '✓ Pushed' : 'Push Direction'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setDirFocusTopics([]);
+                      setDirPriorityPosts([]);
+                      setDirSubmoltFocus('');
+                      setDirExtraHigh([]);
+                      setDirExtraMedium([]);
+                      updateDirection(agent.id, undefined);
+                      const token = getRailwayToken();
+                      if (!token || !agent.railwayConfig) return;
+                      const cleared = mergeDirectionIntoEnvVars(envVars, {
+                        focusTopics: [],
+                        priorityPosts: [],
+                        submoltFocus: '',
+                        extraKeywordsHigh: [],
+                        extraKeywordsMedium: [],
+                      });
+                      setDirPushState('pushing');
+                      try {
+                        const resp = await fetch('/api/railway-push', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            envVars: cleared,
+                            railwayToken: token,
+                            projectId: agent.railwayConfig!.projectId,
+                            serviceId: agent.railwayConfig!.serviceId,
+                            environmentId: agent.railwayConfig!.environmentId,
+                          }),
+                        });
+                        const data = await resp.json();
+                        if (data.ok) {
+                          addLogEntry(agent.id, 'Direction cleared');
+                          setDirPushState('success');
+                          setTimeout(() => setDirPushState('idle'), 4000);
+                        } else {
+                          setDirPushState('error');
+                        }
+                      } catch {
+                        setDirPushState('error');
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: '9px',
+                      color: 'var(--text-ghost, #3a3834)',
+                      cursor: 'pointer',
+                      letterSpacing: '0.06em',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Clear Direction
+                  </button>
+                </div>
+                {dirPushState === 'error' && dirPushError && (
+                  <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--accent-rust, #a06b5a)', margin: 0, lineHeight: 1.4 }}>
+                    {dirPushError}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── Section: LIVE ACTIVITY ──────────────────────────── */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -745,10 +1004,85 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               );
             })()}
 
-            {/* Post/comment history note */}
+            {/* Recent Posts (from search) */}
+            {activity?.recentContent && activity.recentContent.length > 0 && (() => {
+              const agentName = agent.name.toLowerCase();
+              const agentPosts = activity.recentContent
+                .filter(item => {
+                  const author = item.author ?? item.agent ?? item.author_name ?? '';
+                  const authorStr = typeof author === 'object' && author !== null
+                    ? String((author as Record<string, unknown>).name ?? (author as Record<string, unknown>).username ?? '')
+                    : String(author);
+                  return authorStr.toLowerCase() === agentName;
+                })
+                .sort((a, b) => (Number(b.score ?? b.karma ?? b.upvotes ?? 0)) - (Number(a.score ?? a.karma ?? a.upvotes ?? 0)))
+                .slice(0, 5);
+
+              if (agentPosts.length === 0) return null;
+
+              return (
+                <div style={{ marginBottom: '16px' }}>
+                  <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Posts</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {agentPosts.map((post, i) => {
+                      const postId = String(post.id ?? post.post_id ?? '');
+                      const title = String(post.title ?? '').slice(0, 60) || 'Untitled';
+                      const submolt = String(post.submolt ?? post.submolt_name ?? '');
+                      const score = Number(post.score ?? post.karma ?? post.upvotes ?? 0);
+                      const createdAt = post.created_at ?? post.createdAt ?? post.timestamp ?? '';
+                      const timeAgo = createdAt ? _relativeTime(String(createdAt)) : '';
+
+                      return (
+                        <a
+                          key={postId || i}
+                          href={postId ? `https://www.moltbook.com/posts/${postId}` : '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            gap: '10px',
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            backgroundColor: 'var(--bg-card, #1a1d25)',
+                            border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                            textDecoration: 'none',
+                            transition: 'border-color 120ms ease',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active, rgba(255,255,255,0.15))'; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-dim, rgba(255,255,255,0.08))'; }}
+                        >
+                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--accent-amber, #c4956a)', flexShrink: 0, minWidth: '28px', textAlign: 'right' }}>
+                            {score}
+                          </span>
+                          <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-primary, #d4d1cc)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {title}
+                          </span>
+                          {submolt && (
+                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0 }}>
+                              m/{submolt}
+                            </span>
+                          )}
+                          {timeAgo && (
+                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', flexShrink: 0 }}>
+                              {timeAgo}
+                            </span>
+                          )}
+                        </a>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', margin: '6px 0 0', fontStyle: 'italic' }}>
+                    Found via search — may be incomplete
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Profile link */}
             <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-elevated, #181b22)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.04))', marginBottom: '16px' }}>
               <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', margin: '0 0 8px', lineHeight: 1.5 }}>
-                Moltbook doesn&apos;t expose a post/comment history API. View full activity on the profile page.
+                View full activity on the Moltbook profile page.
               </p>
               <a
                 href={`https://www.moltbook.com/u/${encodeURIComponent(agent.name)}`}
@@ -827,6 +1161,23 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
       </div>
     </>
   );
+}
+
+/* ── Helpers ────────────────────────────────────────────────────── */
+
+function _relativeTime(iso: string): string {
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    if (diff < 0) return '';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d`;
+  } catch {
+    return '';
+  }
 }
 
 /* ── Sub-components ─────────────────────────────────────────────── */
@@ -950,6 +1301,80 @@ function FooterButton({
     >
       {children}
     </button>
+  );
+}
+
+function DirectionField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', letterSpacing: '0.08em', color: 'var(--text-ghost, #3a3834)', margin: '0 0 6px', textTransform: 'uppercase' }}>{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function DirectionTagInput({
+  tags,
+  onChange,
+  placeholder,
+}: {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+  placeholder: string;
+}) {
+  const [input, setInput] = useState('');
+
+  function add() {
+    const trimmed = input.trim().toLowerCase();
+    if (trimmed && !tags.includes(trimmed)) {
+      onChange([...tags, trimmed]);
+    }
+    setInput('');
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: tags.length ? '6px' : 0 }}>
+        {tags.map(tag => (
+          <span
+            key={tag}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              backgroundColor: 'var(--bg-elevated, #181b22)',
+              border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '10px',
+              color: 'var(--text-secondary, #8a8780)',
+            }}
+          >
+            {tag}
+            <button
+              onClick={() => onChange(tags.filter(t => t !== tag))}
+              style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', cursor: 'pointer', lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+      </div>
+      <input
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={e => {
+          if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
+            e.preventDefault();
+            add();
+          }
+        }}
+        onBlur={add}
+        placeholder={placeholder}
+        style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', boxSizing: 'border-box' }}
+      />
+    </div>
   );
 }
 

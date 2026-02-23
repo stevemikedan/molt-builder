@@ -29,6 +29,14 @@ export interface StoredAgent {
     serviceId: string;
     environmentId: string;
   };
+  direction?: {
+    focusTopics: string[];
+    priorityPosts: string[];
+    submoltFocus: string;
+    extraKeywordsHigh: string[];
+    extraKeywordsMedium: string[];
+    lastPushedAt?: string;
+  };
 }
 
 const ACCENT_COLORS = ['amber', 'teal', 'violet', 'rust', 'slate', 'bone'] as const;
@@ -157,6 +165,24 @@ export function addLogEntry(id: string, event: string): void {
 
 export function deleteAgent(id: string): void {
   _write(getAgents().filter(a => a.id !== id));
+}
+
+export function updateDirection(
+  id: string,
+  direction: StoredAgent['direction'],
+): void {
+  const agents = getAgents();
+  const idx = agents.findIndex(a => a.id === id);
+  if (idx < 0) return;
+  agents[idx] = {
+    ...agents[idx],
+    direction,
+    log: [
+      ...(agents[idx].log ?? []),
+      _logEntry(direction ? 'Direction updated' : 'Direction cleared'),
+    ],
+  };
+  _write(agents);
 }
 
 export function updateRailwayConfig(
