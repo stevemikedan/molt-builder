@@ -1005,15 +1005,6 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       </div>
                     ))}
                   </div>
-                  {/* Debug: raw API responses — remove after confirming field names */}
-                  <details style={{ marginBottom: '16px' }}>
-                    <summary style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', cursor: 'pointer', letterSpacing: '0.06em' }}>
-                      Raw API response
-                    </summary>
-                    <pre style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-tertiary, #5a5854)', backgroundColor: 'var(--bg-elevated, #181b22)', padding: '10px', borderRadius: '6px', overflow: 'auto', maxHeight: '200px', marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                      {JSON.stringify({ status: s, profile: p, publicProfile: pub, recentPosts: (activity?.recentPosts ?? []).length, recentContent: (activity?.recentContent ?? []).length }, null, 2)}
-                    </pre>
-                  </details>
                 </>
               );
             })()}
