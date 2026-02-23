@@ -64,17 +64,42 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing API key' }, { status: 400 });
   }
 
-  const [statusData, profileData, publicProfile, searchResults] = await Promise.all([
+  // Extract agent ID from profile for ID-based endpoints
+  const [statusData, profileData, publicProfile] = await Promise.all([
     moltGet('/agents/status', apiKey),
     moltGet('/agents/me', apiKey),
     name ? moltGet('/agents/profile', apiKey, { name }) : Promise.resolve(null),
-    name ? moltGetList('/search', apiKey, { q: name, type: 'all', limit: '20' }) : Promise.resolve([]),
   ]);
+
+  // Get agent ID from profile response
+  const agentObj = (profileData?.agent ?? profileData) as Record<string, unknown> | null;
+  const agentId = agentObj?.id ? String(agentObj.id) : '';
+
+  // Probe multiple endpoints for the agent's posts
+  const [searchResults, agentPosts, agentPostsById, userPosts] = await Promise.all([
+    name ? moltGetList('/search', apiKey, { q: name, type: 'posts', limit: '20' }) : Promise.resolve([]),
+    name ? moltGetList(`/agents/${name}/posts`, apiKey, { limit: '20', sort: 'new' }) : Promise.resolve([]),
+    agentId ? moltGetList(`/agents/${agentId}/posts`, apiKey, { limit: '20', sort: 'new' }) : Promise.resolve([]),
+    name ? moltGetList('/posts', apiKey, { author: name, limit: '20', sort: 'new' }) : Promise.resolve([]),
+  ]);
+
+  // Use whichever source returned data
+  const recentPosts = agentPosts.length > 0 ? agentPosts
+    : agentPostsById.length > 0 ? agentPostsById
+    : userPosts.length > 0 ? userPosts
+    : searchResults;
 
   return NextResponse.json({
     status: statusData,
     profile: profileData,
     publicProfile: publicProfile,
     recentContent: searchResults,
+    recentPosts,
+    _probes: {
+      searchCount: searchResults.length,
+      agentPostsCount: agentPosts.length,
+      agentPostsByIdCount: agentPostsById.length,
+      userPostsCount: userPosts.length,
+    },
   });
 }

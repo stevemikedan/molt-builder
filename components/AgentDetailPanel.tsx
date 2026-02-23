@@ -35,6 +35,8 @@ interface LiveActivity {
   profile: Record<string, unknown> | null;
   publicProfile: Record<string, unknown> | null;
   recentContent: Record<string, unknown>[] | null;
+  recentPosts: Record<string, unknown>[] | null;
+  _probes?: Record<string, unknown>;
 }
 
 type PushState = 'idle' | 'pushing' | 'success' | 'error';
@@ -974,14 +976,15 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               const rawPostCount = pubAgent.posts_count ?? pubAgent.post_count ?? pAgent.posts_count ?? pAgent.post_count ?? sAgent.posts_count;
               const rawCommentCount = pubAgent.comments_count ?? pubAgent.comment_count ?? pAgent.comments_count ?? pAgent.comment_count ?? sAgent.comments_count;
               const followers = pubAgent.follower_count ?? pubAgent.followers ?? pAgent.follower_count;
-              // Moltbook API may report 0 despite having activity — use recentComments as floor
+              // Moltbook API may report 0 despite having activity — use available data as floor
               const recentCommentsRaw = ((pub as Record<string, unknown>).recentComments ?? []) as unknown[];
+              const recentPostsRaw = activity?.recentPosts ?? [];
               const commentDisplay = (Number(rawCommentCount) || 0) > 0
                 ? String(rawCommentCount)
                 : recentCommentsRaw.length > 0 ? `${recentCommentsRaw.length}+` : '0';
               const postDisplay = (Number(rawPostCount) || 0) > 0
                 ? String(rawPostCount)
-                : '—';
+                : recentPostsRaw.length > 0 ? `${recentPostsRaw.length}+` : '—';
               return (
                 <>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -1009,7 +1012,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       Raw API response
                     </summary>
                     <pre style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-tertiary, #5a5854)', backgroundColor: 'var(--bg-elevated, #181b22)', padding: '10px', borderRadius: '6px', overflow: 'auto', maxHeight: '200px', marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                      {JSON.stringify({ status: s, profile: p, publicProfile: pub, recentContent: activity?.recentContent ?? [] }, null, 2)}
+                      {JSON.stringify({ status: s, profile: p, publicProfile: pub, recentPosts: activity?.recentPosts ?? [], _probes: activity?._probes ?? {}, recentContent: activity?.recentContent ?? [] }, null, 2)}
                     </pre>
                   </details>
                 </>
@@ -1021,17 +1024,8 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               // Gather recent comments from publicProfile
               const pubData = activity?.publicProfile ?? {};
               const recentComments = ((pubData as Record<string, unknown>).recentComments ?? []) as Record<string, unknown>[];
-              // Gather posts from search results
-              const agentName = agent.name.toLowerCase();
-              const searchPosts = (activity?.recentContent ?? [])
-                .filter(item => {
-                  const author = item.author ?? item.agent ?? item.author_name ?? '';
-                  const authorStr = typeof author === 'object' && author !== null
-                    ? String((author as Record<string, unknown>).name ?? (author as Record<string, unknown>).username ?? '')
-                    : String(author);
-                  return authorStr.toLowerCase() === agentName;
-                })
-                .sort((a, b) => (Number(b.score ?? b.karma ?? b.upvotes ?? 0)) - (Number(a.score ?? a.karma ?? a.upvotes ?? 0)))
+              // Use recentPosts from API (best available source)
+              const searchPosts = (activity?.recentPosts ?? [])
                 .slice(0, 5);
 
               if (recentComments.length === 0 && searchPosts.length === 0) return null;
@@ -1100,12 +1094,15 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                   {/* Search-found posts */}
                   {searchPosts.length > 0 && (
                     <>
-                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Posts</p>
+                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Posts</p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {searchPosts.map((post, i) => {
                           const postId = String(post.id ?? post.post_id ?? '');
                           const title = String(post.title ?? '').slice(0, 60) || 'Untitled';
-                          const submolt = String(post.submolt ?? post.submolt_name ?? '');
+                          const rawSubmolt = post.submolt ?? post.submolt_name ?? '';
+                          const submolt = typeof rawSubmolt === 'object' && rawSubmolt !== null
+                            ? String((rawSubmolt as Record<string, unknown>).name ?? '')
+                            : String(rawSubmolt);
                           const score = Number(post.score ?? post.karma ?? post.upvotes ?? 0);
                           const createdAt = post.created_at ?? post.createdAt ?? post.timestamp ?? '';
                           const timeAgo = createdAt ? _relativeTime(String(createdAt)) : '';
