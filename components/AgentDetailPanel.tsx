@@ -670,14 +670,58 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 marginBottom: '28px',
               }}
             >
-              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-tertiary, #5a5854)', margin: '0 0 6px', lineHeight: 1.5 }}>
-                Connect a Railway service to push env vars and redeploy without copy-paste.
+              {/* One-click deploy */}
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-secondary, #8a8780)', margin: '0 0 10px', lineHeight: 1.5 }}>
+                Deploy your agent to Railway with one click. Your env vars will be pre-filled.
               </p>
-              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                First, make sure you&apos;ve saved a{' '}
-                <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-teal, #5a9e8f)', textDecoration: 'none' }}>Railway API token</a>
-                {' '}in the Settings section on the main dashboard.
+              <a
+                href={(() => {
+                  const repo = 'https://github.com/stevemikedan/molt-agent-template';
+                  const envKeys = Object.keys(localEnvVars).filter(k => {
+                    const v = localEnvVars[k as keyof EnvVarMap];
+                    return v && !v.startsWith('<');
+                  });
+                  const envDefaults = envKeys.map(k => {
+                    const v = localEnvVars[k as keyof EnvVarMap];
+                    return `${k}=${encodeURIComponent(v)}`;
+                  }).join(',');
+                  return `https://railway.app/new/template?template=${encodeURIComponent(repo)}&envs=${envKeys.join(',')}&${envKeys.map(k => `${k}=${encodeURIComponent(localEnvVars[k as keyof EnvVarMap])}`).join('&')}`;
+                })()}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  padding: '9px 20px',
+                  borderRadius: '5px',
+                  border: '1px solid var(--accent-teal, #5a9e8f)',
+                  backgroundColor: 'rgba(90,158,143,0.08)',
+                  color: 'var(--accent-teal, #5a9e8f)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '11px',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  marginBottom: '16px',
+                }}
+              >
+                Deploy on Railway
+              </a>
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 16px', lineHeight: 1.5 }}>
+                After deploying, come back here and connect the service below to enable push-to-deploy from the builder.
               </p>
+
+              {/* Manual connection */}
+              <div style={{ borderTop: '1px solid var(--border-dim, rgba(255,255,255,0.08))', paddingTop: '14px' }}>
+                <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Connect existing service
+                </p>
+                <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                  Save a{' '}
+                  <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-teal, #5a9e8f)', textDecoration: 'none' }}>Railway API token</a>
+                  {' '}in Settings on the main dashboard, then enter your service details.
+                </p>
+              </div>
               <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
                 Project ID
               </p>
