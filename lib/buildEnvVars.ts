@@ -11,6 +11,7 @@ export interface EnvVarMap {
   AGENT_TOPIC_KEYWORDS_HIGH: string;
   AGENT_TOPIC_KEYWORDS_MEDIUM: string;
   AGENT_TARGET_SUBMOLTS: string;
+  STATE_DIR: string;
   LOG_LEVEL: string;
   SYNTHESIS_CYCLE_EVERY: string;
   CYCLE_INTERVAL_HOURS: string;
@@ -45,6 +46,7 @@ export function buildEnvVars(config: CharacterConfig, userApiKey?: string): EnvV
     AGENT_TOPIC_KEYWORDS_HIGH: config.keywordsHigh.join(','),
     AGENT_TOPIC_KEYWORDS_MEDIUM: config.keywordsMedium.join(','),
     AGENT_TARGET_SUBMOLTS: config.targetSubmolts.join(','),
+    STATE_DIR: '/data',
     LOG_LEVEL: 'INFO',
     SYNTHESIS_CYCLE_EVERY: String(config.synthesisEvery ?? 0),
     CYCLE_INTERVAL_HOURS: String(config.cycleIntervalHours ?? 2),
