@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { StoredAgent, deleteAgent, updateRailwayConfig, updateDirection, updateEnvVars, addLogEntry } from '@/lib/agentStorage';
 import { getRailwayToken } from '@/lib/railwayStorage';
-import { EnvVarMap, mergeDirectionIntoEnvVars } from '@/lib/buildEnvVars';
+import { EnvVarMap, mergeDirectionIntoEnvVars, withDefaults } from '@/lib/buildEnvVars';
 
 const ACCENT_MAP: Record<string, string> = {
   amber:  'var(--accent-amber)',
@@ -69,7 +69,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
   // Env var editing state
   const [editingEnvKey, setEditingEnvKey] = useState<string | null>(null);
   const [editingEnvValue, setEditingEnvValue] = useState('');
-  const [localEnvVars, setLocalEnvVars] = useState<EnvVarMap>(agent?.envVars ? { ...agent.envVars } : {} as EnvVarMap);
+  const [localEnvVars, setLocalEnvVars] = useState<EnvVarMap>(agent?.envVars ? withDefaults(agent.envVars) : withDefaults({}));
   const [envDirty, setEnvDirty] = useState(false);
   const [envPushState, setEnvPushState] = useState<PushState>('idle');
   const [envPushError, setEnvPushError] = useState('');

@@ -26,6 +26,38 @@ export interface EnvVarMap {
   DIRECTION_EXTRA_KEYWORDS_MEDIUM: string;
 }
 
+/** Default values for every env var key — used to backfill agents created before new keys were added. */
+export const ENV_VAR_DEFAULTS: EnvVarMap = {
+  MOLTBOOK_API_KEY: '',
+  ANTHROPIC_API_KEY: '<your-anthropic-api-key>',
+  AGENT_NAME: '',
+  AGENT_DESCRIPTION: '',
+  AGENT_CORE_NATURE: '',
+  AGENT_VOICE_RULES: '',
+  AGENT_EXAMPLE_POSTS: '',
+  AGENT_TOPIC_KEYWORDS_HIGH: '',
+  AGENT_TOPIC_KEYWORDS_MEDIUM: '',
+  AGENT_TARGET_SUBMOLTS: '',
+  STATE_DIR: '/data',
+  LOG_LEVEL: 'INFO',
+  SYNTHESIS_CYCLE_EVERY: '0',
+  CYCLE_INTERVAL_HOURS: '2',
+  TAVILY_API_KEY: '',
+  REPLY_TO_COMMENTS: 'true',
+  REPLY_MAX_PER_CYCLE: '2',
+  DIRECTION_CONTEXT_NOTES: '',
+  DIRECTION_FOCUS_TOPICS: '',
+  DIRECTION_PRIORITY_POSTS: '',
+  DIRECTION_SUBMOLT_FOCUS: '',
+  DIRECTION_EXTRA_KEYWORDS_HIGH: '',
+  DIRECTION_EXTRA_KEYWORDS_MEDIUM: '',
+};
+
+/** Fill missing keys in a partial env var map with defaults. */
+export function withDefaults(partial: Partial<EnvVarMap>): EnvVarMap {
+  return { ...ENV_VAR_DEFAULTS, ...partial };
+}
+
 /**
  * Convert a CharacterConfig into the environment variable map
  * used by the molt-agent-template Railway deployment.
