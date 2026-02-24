@@ -44,6 +44,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Filter out redacted placeholder values (e.g. "<your-anthropic-api-key>")
+    // so we don't overwrite real secrets on Railway with placeholders.
+    // variableCollectionUpsert only sets keys we send — omitted keys keep their existing value.
+    const filteredVars: Record<string, string> = {};
+    for (const [key, value] of Object.entries(envVars)) {
+      if (typeof value === 'string' && value.startsWith('<') && value.endsWith('>')) {
+        continue; // skip placeholder
+      }
+      filteredVars[key] = value;
+    }
+
     // 1. Upsert all env vars at once
     await gql(railwayToken, `
       mutation VariableCollectionUpsert($input: VariableCollectionUpsertInput!) {
@@ -54,7 +65,7 @@ export async function POST(req: NextRequest) {
         projectId,
         serviceId,
         environmentId,
-        variables: envVars,
+        variables: filteredVars,
       },
     });
 
