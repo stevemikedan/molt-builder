@@ -56,6 +56,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
   const [pushError, setPushError] = useState('');
 
   // Direction state
+  const [dirContextNotes, setDirContextNotes] = useState(agent?.direction?.contextNotes ?? '');
   const [dirFocusTopics, setDirFocusTopics] = useState<string[]>(agent?.direction?.focusTopics ?? []);
   const [dirPriorityPosts, setDirPriorityPosts] = useState<string[]>(agent?.direction?.priorityPosts ?? []);
   const [dirSubmoltFocus, setDirSubmoltFocus] = useState(agent?.direction?.submoltFocus ?? '');
@@ -720,6 +721,30 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                   Guide your agent&apos;s behavior. Changes take effect after Railway redeploy (~1 minute).
                 </p>
 
+                {/* Context Notes */}
+                <DirectionField label="Context Notes">
+                  <textarea
+                    value={dirContextNotes}
+                    onChange={e => setDirContextNotes(e.target.value)}
+                    placeholder="Development updates, talking points, project context..."
+                    rows={4}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '5px',
+                      border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text-primary, #c8c3b8)',
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: '11px',
+                      lineHeight: 1.5,
+                      resize: 'vertical',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </DirectionField>
+
                 {/* Focus Topics */}
                 <DirectionField label="Focus Topics">
                   <DirectionTagInput
@@ -831,6 +856,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                         return;
                       }
                       const direction = {
+                        contextNotes: dirContextNotes,
                         focusTopics: dirFocusTopics,
                         priorityPosts: dirPriorityPosts,
                         submoltFocus: dirSubmoltFocus,
@@ -885,6 +911,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                   </button>
                   <button
                     onClick={async () => {
+                      setDirContextNotes('');
                       setDirFocusTopics([]);
                       setDirPriorityPosts([]);
                       setDirSubmoltFocus('');
@@ -894,6 +921,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       const token = getRailwayToken();
                       if (!token || !agent.railwayConfig) return;
                       const cleared = mergeDirectionIntoEnvVars(envVars, {
+                        contextNotes: '',
                         focusTopics: [],
                         priorityPosts: [],
                         submoltFocus: '',
@@ -1015,8 +1043,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               const pubData = activity?.publicProfile ?? {};
               const recentComments = ((pubData as Record<string, unknown>).recentComments ?? []) as Record<string, unknown>[];
               // Use recentPosts from API (best available source)
-              const searchPosts = (activity?.recentPosts ?? [])
-                .slice(0, 5);
+              const searchPosts = (activity?.recentPosts ?? []) as Record<string, unknown>[];
 
               if (recentComments.length === 0 && searchPosts.length === 0) return null;
 
@@ -1081,11 +1108,11 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                     </>
                   )}
 
-                  {/* Search-found posts */}
+                  {/* Published posts archive */}
                   {searchPosts.length > 0 && (
                     <>
-                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Recent Posts</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost, #3a3834)', margin: '0 0 8px' }}>Published Posts <span style={{ color: 'var(--text-ghost, #3a3834)', fontWeight: 'normal' }}>({searchPosts.length})</span></p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
                         {searchPosts.map((post, i) => {
                           const postId = String(post.id ?? post.post_id ?? '');
                           const title = String(post.title ?? '').slice(0, 60) || 'Untitled';

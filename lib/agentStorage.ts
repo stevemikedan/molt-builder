@@ -30,6 +30,7 @@ export interface StoredAgent {
     environmentId: string;
   };
   direction?: {
+    contextNotes: string;
     focusTopics: string[];
     priorityPosts: string[];
     submoltFocus: string;

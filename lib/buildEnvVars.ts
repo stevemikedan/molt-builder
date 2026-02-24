@@ -17,6 +17,7 @@ export interface EnvVarMap {
   TAVILY_API_KEY: string;
   REPLY_TO_COMMENTS: string;
   REPLY_MAX_PER_CYCLE: string;
+  DIRECTION_CONTEXT_NOTES: string;
   DIRECTION_FOCUS_TOPICS: string;
   DIRECTION_PRIORITY_POSTS: string;
   DIRECTION_SUBMOLT_FOCUS: string;
@@ -50,6 +51,7 @@ export function buildEnvVars(config: CharacterConfig, userApiKey?: string): EnvV
     TAVILY_API_KEY: config.tavilyApiKey ?? '',
     REPLY_TO_COMMENTS: String(config.replyToComments ?? true),
     REPLY_MAX_PER_CYCLE: String(config.replyMaxPerCycle ?? 2),
+    DIRECTION_CONTEXT_NOTES: '',
     DIRECTION_FOCUS_TOPICS: '',
     DIRECTION_PRIORITY_POSTS: '',
     DIRECTION_SUBMOLT_FOCUS: '',
@@ -61,6 +63,7 @@ export function buildEnvVars(config: CharacterConfig, userApiKey?: string): EnvV
 export function mergeDirectionIntoEnvVars(
   envVars: EnvVarMap,
   direction?: {
+    contextNotes?: string;
     focusTopics: string[];
     priorityPosts: string[];
     submoltFocus: string;
@@ -71,6 +74,7 @@ export function mergeDirectionIntoEnvVars(
   if (!direction) return envVars;
   return {
     ...envVars,
+    DIRECTION_CONTEXT_NOTES: direction.contextNotes || '',
     DIRECTION_FOCUS_TOPICS: direction.focusTopics.join(','),
     DIRECTION_PRIORITY_POSTS: direction.priorityPosts.join(','),
     DIRECTION_SUBMOLT_FOCUS: direction.submoltFocus,

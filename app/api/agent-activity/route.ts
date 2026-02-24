@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
   // Fetch agent's own posts and search mentions in parallel
   const [recentPosts, searchResults] = await Promise.all([
-    name ? moltGetList('/posts', apiKey, { author: name, limit: '20', sort: 'new' }) : Promise.resolve([]),
+    name ? moltGetList('/posts', apiKey, { author: name, limit: '50', sort: 'new' }) : Promise.resolve([]),
     name ? moltGetList('/search', apiKey, { q: name, type: 'posts', limit: '10' }) : Promise.resolve([]),
   ]);
 
