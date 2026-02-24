@@ -186,6 +186,24 @@ export function updateDirection(
   _write(agents);
 }
 
+export function updateEnvVars(
+  id: string,
+  envVars: EnvVarMap,
+): void {
+  const agents = getAgents();
+  const idx = agents.findIndex(a => a.id === id);
+  if (idx < 0) return;
+  agents[idx] = {
+    ...agents[idx],
+    envVars: _redactForStorage(envVars),
+    log: [
+      ...(agents[idx].log ?? []),
+      _logEntry('Environment variables updated'),
+    ],
+  };
+  _write(agents);
+}
+
 export function updateRailwayConfig(
   id: string,
   config: StoredAgent['railwayConfig'],

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { StoredAgent, deleteAgent, updateRailwayConfig, updateDirection, addLogEntry } from '@/lib/agentStorage';
+import { StoredAgent, deleteAgent, updateRailwayConfig, updateDirection, updateEnvVars, addLogEntry } from '@/lib/agentStorage';
 import { getRailwayToken } from '@/lib/railwayStorage';
 import { EnvVarMap, mergeDirectionIntoEnvVars } from '@/lib/buildEnvVars';
 
@@ -65,6 +65,14 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
   const [dirPushState, setDirPushState] = useState<PushState>('idle');
   const [dirPushError, setDirPushError] = useState('');
   const [dirPostInput, setDirPostInput] = useState('');
+
+  // Env var editing state
+  const [editingEnvKey, setEditingEnvKey] = useState<string | null>(null);
+  const [editingEnvValue, setEditingEnvValue] = useState('');
+  const [localEnvVars, setLocalEnvVars] = useState<EnvVarMap>(agent?.envVars ? { ...agent.envVars } : {} as EnvVarMap);
+  const [envDirty, setEnvDirty] = useState(false);
+  const [envPushState, setEnvPushState] = useState<PushState>('idle');
+  const [envPushError, setEnvPushError] = useState('');
 
   useEffect(() => {
     if (!agent) return;
@@ -302,26 +310,112 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             }}
           >
             <SectionHeading noMargin>Environment Variables</SectionHeading>
-            <button
-              onClick={handleCopyEnv}
-              style={{
-                padding: '5px 12px',
-                borderRadius: '5px',
-                border: '1px solid var(--border-active, rgba(255,255,255,0.15))',
-                backgroundColor: 'transparent',
-                color: copied
-                  ? 'var(--accent-teal, #5a9e8f)'
-                  : 'var(--text-secondary, #8a8780)',
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '10px',
-                letterSpacing: '0.05em',
-                cursor: 'pointer',
-                transition: 'color 120ms ease, border-color 120ms ease',
-              }}
-            >
-              {copied ? 'Copied!' : 'Copy all as .env'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {envDirty && agent.railwayConfig && (
+                <button
+                  disabled={envPushState === 'pushing'}
+                  onClick={async () => {
+                    const token = getRailwayToken();
+                    if (!token) {
+                      setEnvPushError('No Railway token set.');
+                      setEnvPushState('error');
+                      return;
+                    }
+                    updateEnvVars(agent.id, localEnvVars as EnvVarMap);
+                    setEnvPushState('pushing');
+                    setEnvPushError('');
+                    try {
+                      const resp = await fetch('/api/railway-push', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          envVars: localEnvVars,
+                          railwayToken: token,
+                          projectId: agent.railwayConfig!.projectId,
+                          serviceId: agent.railwayConfig!.serviceId,
+                          environmentId: agent.railwayConfig!.environmentId,
+                        }),
+                      });
+                      const data = await resp.json();
+                      if (data.ok) {
+                        addLogEntry(agent.id, 'Environment variables pushed to Railway');
+                        setEnvPushState('success');
+                        setEnvDirty(false);
+                        setTimeout(() => setEnvPushState('idle'), 4000);
+                      } else {
+                        setEnvPushError(data.error ?? 'Push failed');
+                        setEnvPushState('error');
+                      }
+                    } catch (e) {
+                      setEnvPushError(e instanceof Error ? e.message : 'Network error');
+                      setEnvPushState('error');
+                    }
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '5px',
+                    border: `1px solid ${envPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)'}`,
+                    backgroundColor: 'transparent',
+                    color: envPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '10px',
+                    letterSpacing: '0.05em',
+                    cursor: envPushState === 'pushing' ? 'wait' : 'pointer',
+                  }}
+                >
+                  {envPushState === 'pushing' ? 'Pushing...' : envPushState === 'success' ? 'Pushed' : 'Save & Push'}
+                </button>
+              )}
+              {envDirty && !agent.railwayConfig && (
+                <button
+                  onClick={() => {
+                    updateEnvVars(agent.id, localEnvVars as EnvVarMap);
+                    setEnvDirty(false);
+                    setEnvPushState('success');
+                    setTimeout(() => setEnvPushState('idle'), 4000);
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '5px',
+                    border: `1px solid ${envPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)'}`,
+                    backgroundColor: 'transparent',
+                    color: envPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '10px',
+                    letterSpacing: '0.05em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {envPushState === 'success' ? 'Saved' : 'Save'}
+                </button>
+              )}
+              <button
+                onClick={handleCopyEnv}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '5px',
+                  border: '1px solid var(--border-active, rgba(255,255,255,0.15))',
+                  backgroundColor: 'transparent',
+                  color: copied
+                    ? 'var(--accent-teal, #5a9e8f)'
+                    : 'var(--text-secondary, #8a8780)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '10px',
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                  transition: 'color 120ms ease, border-color 120ms ease',
+                }}
+              >
+                {copied ? 'Copied!' : 'Copy .env'}
+              </button>
+            </div>
           </div>
+
+          {envPushState === 'error' && envPushError && (
+            <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--accent-rust, #a06b5a)', margin: '0 0 8px', lineHeight: 1.4 }}>
+              {envPushError}
+            </p>
+          )}
 
           <div
             style={{
@@ -331,13 +425,14 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               marginBottom: '28px',
             }}
           >
-            {Object.entries(envVars).map(([key, value], i) => {
+            {Object.entries(localEnvVars).map(([key, value], i) => {
               const isApiKey = key === 'MOLTBOOK_API_KEY';
               const isAnthropicKey = key === 'ANTHROPIC_API_KEY';
-              const displayValue = isApiKey
+              const isRedacted = isApiKey || (isAnthropicKey && value === '<your-anthropic-api-key>');
+              const isEditing = editingEnvKey === key;
+              const displayValue = isApiKey && value && !value.startsWith('<')
                 ? maskValue(key, value)
                 : value;
-              const isPlaceholder = isAnthropicKey && value === '<your-anthropic-api-key>';
 
               return (
                 <div
@@ -347,7 +442,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                     gap: '16px',
                     padding: '9px 14px',
                     borderBottom:
-                      i < Object.keys(envVars).length - 1
+                      i < Object.keys(localEnvVars).length - 1
                         ? '1px solid var(--border-subtle, rgba(255,255,255,0.04))'
                         : 'none',
                     backgroundColor:
@@ -370,20 +465,64 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                   >
                     {key}
                   </span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono, monospace)',
-                      fontSize: '10px',
-                      color: isPlaceholder
-                        ? 'var(--text-tertiary, #5a5854)'
-                        : 'var(--text-secondary, #8a8780)',
-                      fontStyle: isPlaceholder ? 'italic' : 'normal',
-                      wordBreak: 'break-all',
-                      flex: 1,
-                    }}
-                  >
-                    {isPlaceholder ? '⟨set your Anthropic API key here⟩' : displayValue || '—'}
-                  </span>
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editingEnvValue}
+                      onChange={e => setEditingEnvValue(e.target.value)}
+                      onBlur={() => {
+                        setLocalEnvVars(prev => ({ ...prev, [key]: editingEnvValue }));
+                        setEnvDirty(true);
+                        setEditingEnvKey(null);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          setLocalEnvVars(prev => ({ ...prev, [key]: editingEnvValue }));
+                          setEnvDirty(true);
+                          setEditingEnvKey(null);
+                        } else if (e.key === 'Escape') {
+                          setEditingEnvKey(null);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '10px',
+                        color: 'var(--text-primary, #c8c3b8)',
+                        backgroundColor: 'transparent',
+                        border: '1px solid var(--accent-amber, #c4956a)',
+                        borderRadius: '3px',
+                        padding: '2px 6px',
+                        outline: 'none',
+                      }}
+                    />
+                  ) : (
+                    <span
+                      onClick={() => {
+                        setEditingEnvKey(key);
+                        setEditingEnvValue(isRedacted && !isAnthropicKey ? '' : value);
+                      }}
+                      title="Click to edit"
+                      style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '10px',
+                        color: isAnthropicKey && value === '<your-anthropic-api-key>'
+                          ? 'var(--text-tertiary, #5a5854)'
+                          : 'var(--text-secondary, #8a8780)',
+                        fontStyle: isAnthropicKey && value === '<your-anthropic-api-key>' ? 'italic' : 'normal',
+                        wordBreak: 'break-all',
+                        flex: 1,
+                        cursor: 'pointer',
+                        borderRadius: '3px',
+                        padding: '0 2px',
+                        transition: 'background-color 120ms ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                      {isAnthropicKey && value === '<your-anthropic-api-key>' ? '(click to set Anthropic API key)' : displayValue || '(empty — click to set)'}
+                    </span>
+                  )}
                 </div>
               );
             })}
