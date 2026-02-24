@@ -310,7 +310,12 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
             }}
           >
             <SectionHeading noMargin>Environment Variables</SectionHeading>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {envDirty && (
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--accent-amber, #c4956a)', letterSpacing: '0.05em' }}>
+                  {agent.railwayConfig ? 'saved locally — not yet deployed' : 'saved'}
+                </span>
+              )}
               {envDirty && agent.railwayConfig && (
                 <button
                   disabled={envPushState === 'pushing'}
@@ -321,7 +326,6 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       setEnvPushState('error');
                       return;
                     }
-                    updateEnvVars(agent.id, localEnvVars as EnvVarMap);
                     setEnvPushState('pushing');
                     setEnvPushError('');
                     try {
@@ -363,30 +367,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                     cursor: envPushState === 'pushing' ? 'wait' : 'pointer',
                   }}
                 >
-                  {envPushState === 'pushing' ? 'Pushing...' : envPushState === 'success' ? 'Pushed' : 'Save & Push'}
-                </button>
-              )}
-              {envDirty && !agent.railwayConfig && (
-                <button
-                  onClick={() => {
-                    updateEnvVars(agent.id, localEnvVars as EnvVarMap);
-                    setEnvDirty(false);
-                    setEnvPushState('success');
-                    setTimeout(() => setEnvPushState('idle'), 4000);
-                  }}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '5px',
-                    border: `1px solid ${envPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)'}`,
-                    backgroundColor: 'transparent',
-                    color: envPushState === 'success' ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
-                    fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: '10px',
-                    letterSpacing: '0.05em',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {envPushState === 'success' ? 'Saved' : 'Save'}
+                  {envPushState === 'pushing' ? 'Deploying...' : envPushState === 'success' ? 'Deployed' : 'Deploy to Railway'}
                 </button>
               )}
               <button
@@ -471,13 +452,17 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                       value={editingEnvValue}
                       onChange={e => setEditingEnvValue(e.target.value)}
                       onBlur={() => {
-                        setLocalEnvVars(prev => ({ ...prev, [key]: editingEnvValue }));
+                        const updated = { ...localEnvVars, [key]: editingEnvValue };
+                        setLocalEnvVars(updated as EnvVarMap);
+                        updateEnvVars(agent.id, updated as EnvVarMap);
                         setEnvDirty(true);
                         setEditingEnvKey(null);
                       }}
                       onKeyDown={e => {
                         if (e.key === 'Enter') {
-                          setLocalEnvVars(prev => ({ ...prev, [key]: editingEnvValue }));
+                          const updated = { ...localEnvVars, [key]: editingEnvValue };
+                          setLocalEnvVars(updated as EnvVarMap);
+                          updateEnvVars(agent.id, updated as EnvVarMap);
                           setEnvDirty(true);
                           setEditingEnvKey(null);
                         } else if (e.key === 'Escape') {
