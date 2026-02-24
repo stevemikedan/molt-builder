@@ -703,21 +703,24 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                 Click your service in Railway, then find the ID in the URL: .../service/<strong>[this-id]</strong>
               </p>
               <p style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 4px', letterSpacing: '0.08em' }}>
-                Environment ID (default: production)
+                Environment ID
               </p>
               <input
                 value={rwEnvironmentId}
                 onChange={e => setRwEnvironmentId(e.target.value)}
-                placeholder="production"
-                style={{ width: '100%', marginBottom: '12px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                style={{ width: '100%', marginBottom: '4px', padding: '7px 10px', borderRadius: '5px', border: '1px solid var(--border-dim, rgba(255,255,255,0.08))', backgroundColor: 'var(--bg-elevated, #181b22)', color: 'var(--text-primary, #d4d1cc)', fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', boxSizing: 'border-box' }}
               />
+              <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '10px', color: 'var(--text-ghost, #3a3834)', margin: '0 0 12px', lineHeight: 1.4 }}>
+                Settings → Environments in your Railway project. Click the environment, find the UUID in the URL.
+              </p>
               <button
-                disabled={!rwProjectId.trim() || !rwServiceId.trim()}
+                disabled={!rwProjectId.trim() || !rwServiceId.trim() || !rwEnvironmentId.trim()}
                 onClick={() => {
                   updateRailwayConfig(agent.id, {
                     projectId: rwProjectId.trim(),
                     serviceId: rwServiceId.trim(),
-                    environmentId: rwEnvironmentId.trim() || 'production',
+                    environmentId: rwEnvironmentId.trim(),
                   });
                   // Reload page to reflect changes
                   window.location.reload();
@@ -733,7 +736,7 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
                   cursor: 'pointer',
-                  opacity: (!rwProjectId.trim() || !rwServiceId.trim()) ? 0.4 : 1,
+                  opacity: (!rwProjectId.trim() || !rwServiceId.trim() || !rwEnvironmentId.trim()) ? 0.4 : 1,
                 }}
               >
                 Connect
