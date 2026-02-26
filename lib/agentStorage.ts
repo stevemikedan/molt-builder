@@ -29,6 +29,7 @@ export interface StoredAgent {
     serviceId: string;
     environmentId: string;
   };
+  serviceUrl?: string;
   direction?: {
     contextNotes: string;
     focusTopics: string[];
@@ -199,6 +200,24 @@ export function updateEnvVars(
     log: [
       ...(agents[idx].log ?? []),
       _logEntry('Environment variables updated'),
+    ],
+  };
+  _write(agents);
+}
+
+export function updateServiceUrl(
+  id: string,
+  serviceUrl: string | undefined,
+): void {
+  const agents = getAgents();
+  const idx = agents.findIndex(a => a.id === id);
+  if (idx < 0) return;
+  agents[idx] = {
+    ...agents[idx],
+    serviceUrl,
+    log: [
+      ...(agents[idx].log ?? []),
+      _logEntry(serviceUrl ? 'Chat service URL connected' : 'Chat service URL removed'),
     ],
   };
   _write(agents);

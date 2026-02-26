@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { StoredAgent, deleteAgent, updateRailwayConfig, updateDirection, updateEnvVars, addLogEntry } from '@/lib/agentStorage';
+import { StoredAgent, deleteAgent, updateRailwayConfig, updateDirection, updateEnvVars, updateServiceUrl, addLogEntry } from '@/lib/agentStorage';
 import { getRailwayToken } from '@/lib/railwayStorage';
 import { EnvVarMap, mergeDirectionIntoEnvVars, withDefaults } from '@/lib/buildEnvVars';
 
@@ -73,6 +73,33 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
   const [envDirty, setEnvDirty] = useState(false);
   const [envPushState, setEnvPushState] = useState<PushState>('idle');
   const [envPushError, setEnvPushError] = useState('');
+
+  // Chat state
+  const [chatServiceUrl, setChatServiceUrl] = useState(agent?.serviceUrl ?? '');
+  const [chatConnected, setChatConnected] = useState(!!agent?.serviceUrl);
+  const [chatConnecting, setChatConnecting] = useState(false);
+  const [chatConnectError, setChatConnectError] = useState('');
+  const [chatMessages, setChatMessages] = useState<{ id: string; role: string; content: string; timestamp: string }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Load chat history when connected
+  useEffect(() => {
+    if (!chatConnected || !chatServiceUrl) return;
+    const apiKey = agent?.envVars?.MOLTBOOK_API_KEY ?? '';
+    fetch(`/api/chat?serviceUrl=${encodeURIComponent(chatServiceUrl)}&apiKey=${encodeURIComponent(apiKey)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setChatMessages(data);
+      })
+      .catch(() => { /* silent */ });
+  }, [chatConnected, chatServiceUrl]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages.length]);
 
   useEffect(() => {
     if (!agent) return;
@@ -1147,6 +1174,258 @@ export default function AgentDetailPanel({ agent, onClose, onDeleted }: AgentDet
               </div>
             </div>
           )}
+
+          {/* ── Section: CHAT ──────────────────────────────────── */}
+          <div style={{ marginBottom: '28px' }}>
+            <SectionHeading>Chat</SectionHeading>
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-card, #1a1d25)',
+                border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              {!chatConnected ? (
+                <>
+                  <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--text-ghost, #3a3834)', margin: 0, lineHeight: 1.5 }}>
+                    Paste your Railway public URL to chat directly with your agent. Enable <strong>Public Networking</strong> on your Railway service first.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      value={chatServiceUrl}
+                      onChange={e => { setChatServiceUrl(e.target.value); setChatConnectError(''); }}
+                      placeholder="https://your-agent.up.railway.app"
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        borderRadius: '5px',
+                        border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                        backgroundColor: 'var(--bg-elevated, #181b22)',
+                        color: 'var(--text-primary, #d4d1cc)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '11px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    <button
+                      disabled={chatConnecting || !chatServiceUrl.trim()}
+                      onClick={async () => {
+                        const url = chatServiceUrl.trim().replace(/\/+$/, '');
+                        setChatConnecting(true);
+                        setChatConnectError('');
+                        try {
+                          const resp = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8000) });
+                          const data = await resp.json();
+                          if (data.ok) {
+                            setChatServiceUrl(url);
+                            setChatConnected(true);
+                            updateServiceUrl(agent.id, url);
+                          } else {
+                            setChatConnectError('Agent responded but health check failed.');
+                          }
+                        } catch {
+                          setChatConnectError('Could not reach agent. Is Public Networking enabled?');
+                        } finally {
+                          setChatConnecting(false);
+                        }
+                      }}
+                      style={{
+                        padding: '7px 16px',
+                        borderRadius: '5px',
+                        border: '1px solid var(--accent-teal, #5a9e8f)',
+                        backgroundColor: 'transparent',
+                        color: 'var(--accent-teal, #5a9e8f)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '10px',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        cursor: chatConnecting ? 'wait' : 'pointer',
+                        opacity: (!chatServiceUrl.trim() || chatConnecting) ? 0.4 : 1,
+                      }}
+                    >
+                      {chatConnecting ? 'Checking…' : 'Connect'}
+                    </button>
+                  </div>
+                  {chatConnectError && (
+                    <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '11px', color: 'var(--accent-rust, #a06b5a)', margin: 0, lineHeight: 1.4 }}>
+                      {chatConnectError}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Connected header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--accent-teal, #5a9e8f)', letterSpacing: '0.04em' }}>
+                      Connected to {chatServiceUrl.replace(/^https?:\/\//, '').split('/')[0]}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setChatConnected(false);
+                        setChatMessages([]);
+                        updateServiceUrl(agent.id, undefined);
+                      }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', color: 'var(--text-ghost, #3a3834)', cursor: 'pointer', letterSpacing: '0.06em', textDecoration: 'underline' }}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+
+                  {/* Message list */}
+                  <div
+                    style={{
+                      maxHeight: '320px',
+                      overflowY: 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      padding: '4px 0',
+                    }}
+                  >
+                    {chatMessages.length === 0 && (
+                      <p style={{ fontFamily: 'var(--font-sans, sans-serif)', fontSize: '12px', color: 'var(--text-ghost, #3a3834)', margin: 0, textAlign: 'center', padding: '16px 0' }}>
+                        No messages yet. Say something.
+                      </p>
+                    )}
+                    {chatMessages.map(msg => (
+                      <div
+                        key={msg.id}
+                        style={{
+                          alignSelf: msg.role === 'owner' ? 'flex-end' : 'flex-start',
+                          maxWidth: '85%',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          backgroundColor: msg.role === 'owner'
+                            ? 'rgba(196,149,106,0.1)'
+                            : 'var(--bg-elevated, #181b22)',
+                          border: `1px solid ${msg.role === 'owner' ? 'rgba(196,149,106,0.2)' : 'var(--border-dim, rgba(255,255,255,0.08))'}`,
+                        }}
+                      >
+                        <p style={{
+                          fontFamily: 'var(--font-sans, sans-serif)',
+                          fontSize: '12px',
+                          color: 'var(--text-primary, #d4d1cc)',
+                          margin: 0,
+                          lineHeight: 1.5,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}>
+                          {msg.content}
+                        </p>
+                        <p style={{
+                          fontFamily: 'var(--font-mono, monospace)',
+                          fontSize: '8px',
+                          color: 'var(--text-ghost, #3a3834)',
+                          margin: '4px 0 0',
+                          textAlign: msg.role === 'owner' ? 'right' : 'left',
+                        }}>
+                          {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </p>
+                      </div>
+                    ))}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input bar */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={async e => {
+                        if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !chatSending) {
+                          e.preventDefault();
+                          const msg = chatInput.trim();
+                          setChatInput('');
+                          setChatSending(true);
+                          // Optimistic owner message
+                          const tempId = `temp_${Date.now()}`;
+                          const now = new Date().toISOString();
+                          setChatMessages(prev => [...prev, { id: tempId, role: 'owner', content: msg, timestamp: now }]);
+                          try {
+                            const resp = await fetch('/api/chat', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                serviceUrl: chatServiceUrl,
+                                apiKey: agent.envVars?.MOLTBOOK_API_KEY ?? '',
+                                message: msg,
+                              }),
+                            });
+                            const data = await resp.json();
+                            if (data.response) {
+                              setChatMessages(prev => [...prev, { id: data.id ?? `resp_${Date.now()}`, role: 'agent', content: data.response, timestamp: data.timestamp ?? now }]);
+                            }
+                          } catch { /* silent */ }
+                          finally { setChatSending(false); }
+                        }
+                      }}
+                      placeholder={chatSending ? 'Thinking…' : 'Send a message…'}
+                      disabled={chatSending}
+                      style={{
+                        flex: 1,
+                        padding: '8px 10px',
+                        borderRadius: '5px',
+                        border: '1px solid var(--border-dim, rgba(255,255,255,0.08))',
+                        backgroundColor: 'var(--bg-elevated, #181b22)',
+                        color: 'var(--text-primary, #d4d1cc)',
+                        fontFamily: 'var(--font-sans, sans-serif)',
+                        fontSize: '12px',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      disabled={chatSending || !chatInput.trim()}
+                      onClick={async () => {
+                        if (!chatInput.trim() || chatSending) return;
+                        const msg = chatInput.trim();
+                        setChatInput('');
+                        setChatSending(true);
+                        const tempId = `temp_${Date.now()}`;
+                        const now = new Date().toISOString();
+                        setChatMessages(prev => [...prev, { id: tempId, role: 'owner', content: msg, timestamp: now }]);
+                        try {
+                          const resp = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              serviceUrl: chatServiceUrl,
+                              apiKey: agent.envVars?.MOLTBOOK_API_KEY ?? '',
+                              message: msg,
+                            }),
+                          });
+                          const data = await resp.json();
+                          if (data.response) {
+                            setChatMessages(prev => [...prev, { id: data.id ?? `resp_${Date.now()}`, role: 'agent', content: data.response, timestamp: data.timestamp ?? now }]);
+                          }
+                        } catch { /* silent */ }
+                        finally { setChatSending(false); }
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '5px',
+                        border: '1px solid var(--accent-amber, #c4956a)',
+                        backgroundColor: 'transparent',
+                        color: 'var(--accent-amber, #c4956a)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '10px',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        cursor: (chatSending || !chatInput.trim()) ? 'default' : 'pointer',
+                        opacity: (chatSending || !chatInput.trim()) ? 0.4 : 1,
+                      }}
+                    >
+                      {chatSending ? '…' : 'Send'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* ── Section: LIVE ACTIVITY ──────────────────────────── */}
           <div>
