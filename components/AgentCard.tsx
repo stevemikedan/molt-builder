@@ -24,6 +24,7 @@ const ACCENT_DIM_MAP: Record<string, string> = {
 interface AgentCardProps {
   agent: StoredAgent;
   onClick: () => void;
+  onChat?: () => void;
   index: number;
 }
 
@@ -33,7 +34,7 @@ function daysSince(isoDate: string): number {
   return Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
 }
 
-export default function AgentCard({ agent, onClick, index }: AgentCardProps) {
+export default function AgentCard({ agent, onClick, onChat, index }: AgentCardProps) {
   const router = useRouter();
   const accentColor = ACCENT_MAP[agent.accentColor] ?? ACCENT_MAP.amber;
   const accentDim   = ACCENT_DIM_MAP[agent.accentColor] ?? ACCENT_DIM_MAP.amber;
@@ -310,6 +311,38 @@ export default function AgentCard({ agent, onClick, index }: AgentCardProps) {
               >
                 Edit
               </button>
+              {onChat && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChat();
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '5px',
+                    border: '1px solid var(--accent-teal, #5a9e8f)',
+                    backgroundColor: 'transparent',
+                    color: 'var(--accent-teal, #5a9e8f)',
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '10px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'background-color 120ms ease, opacity 120ms ease',
+                    opacity: 0.85,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.backgroundColor = 'rgba(90,158,143,0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.85';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Chat
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();

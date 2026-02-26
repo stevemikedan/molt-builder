@@ -8,10 +8,12 @@ import AppHeader from '@/components/AppHeader';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import AgentCard from '@/components/AgentCard';
 import AgentDetailPanel from '@/components/AgentDetailPanel';
+import ChatPanel from '@/components/ChatPanel';
 
 export default function DashboardPage() {
   const [agents, setAgents] = useState<StoredAgent[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [chatAgentId, setChatAgentId] = useState<string | null>(null);
   const [view, setView] = useState<SidebarView>('agents');
   const router = useRouter();
 
@@ -29,6 +31,7 @@ export default function DashboardPage() {
   }, []);
 
   const activeAgent = agents.find(a => a.id === activeId) ?? null;
+  const chatAgent = agents.find(a => a.id === chatAgentId) ?? null;
 
   function handleDeleted() {
     setAgents(getAgents());
@@ -84,7 +87,14 @@ export default function DashboardPage() {
                     key={agent.id}
                     agent={agent}
                     index={i}
-                    onClick={() => setActiveId(prev => prev === agent.id ? null : agent.id)}
+                    onClick={() => {
+                      setChatAgentId(null);
+                      setActiveId(prev => prev === agent.id ? null : agent.id);
+                    }}
+                    onChat={() => {
+                      setActiveId(null);
+                      setChatAgentId(prev => prev === agent.id ? null : agent.id);
+                    }}
                   />
                 ))}
               </div>
@@ -200,6 +210,13 @@ export default function DashboardPage() {
           agent={activeAgent}
           onClose={() => setActiveId(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {chatAgent && (
+        <ChatPanel
+          agent={chatAgent}
+          onClose={() => setChatAgentId(null)}
         />
       )}
     </div>
