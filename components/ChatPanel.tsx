@@ -29,6 +29,15 @@ interface ChatMessage {
 
 type ChatMode = 'preview' | 'live';
 
+const PROVIDERS = [
+  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
+  { id: 'openai',    label: 'OpenAI',    placeholder: 'sk-...' },
+  { id: 'gemini',    label: 'Gemini',    placeholder: 'AIza...' },
+  { id: 'groq',      label: 'Groq',      placeholder: 'gsk_...' },
+  { id: 'xai',       label: 'xAI',       placeholder: 'xai-...' },
+  { id: 'deepseek',  label: 'DeepSeek',  placeholder: 'sk-...' },
+] as const;
+
 interface ChatPanelProps {
   agent: StoredAgent;
   onClose: () => void;
@@ -43,6 +52,7 @@ export default function ChatPanel({ agent, onClose }: ChatPanelProps) {
   const [sending, setSending] = useState(false);
   const [mode, setMode] = useState<ChatMode>('preview');
   const [apiKey, setApiKey] = useState('');
+  const [provider, setProvider] = useState('anthropic');
   const [apiKeyExpanded, setApiKeyExpanded] = useState(false);
   const [liveHealthy, setLiveHealthy] = useState<boolean | null>(null);
   const [liveChecking, setLiveChecking] = useState(false);
@@ -117,7 +127,7 @@ export default function ChatPanel({ agent, onClose }: ChatPanelProps) {
           body: JSON.stringify({
             config: safeConfig,
             messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-            ...(apiKey.trim() ? { userApiKey: apiKey.trim() } : {}),
+            ...(apiKey.trim() ? { userApiKey: apiKey.trim(), provider } : {}),
           }),
         });
         const data = await resp.json();
@@ -162,6 +172,7 @@ export default function ChatPanel({ agent, onClose }: ChatPanelProps) {
   }
 
   const usingUserKey = !!apiKey.trim();
+  const activeProvider = PROVIDERS.find(p => p.id === provider) ?? PROVIDERS[0];
 
   return (
     <>
@@ -361,7 +372,7 @@ export default function ChatPanel({ agent, onClose }: ChatPanelProps) {
                   color: usingUserKey ? 'var(--accent-teal, #5a9e8f)' : 'var(--text-ghost, #3a3834)',
                 }}
               >
-                {usingUserKey ? 'Using your key (Sonnet)' : 'Using shared key (Haiku)'}
+                {usingUserKey ? `Using your key (${activeProvider.label})` : 'Using shared key (Haiku)'}
               </span>
               <span
                 style={{
@@ -376,12 +387,35 @@ export default function ChatPanel({ agent, onClose }: ChatPanelProps) {
               </span>
             </div>
             {apiKeyExpanded && (
-              <div style={{ marginTop: '8px' }}>
+              <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {/* Provider selector */}
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {PROVIDERS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={(e) => { e.stopPropagation(); setProvider(p.id); }}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${provider === p.id ? 'var(--accent-teal, #5a9e8f)' : 'var(--border-dim, rgba(255,255,255,0.08))'}`,
+                        backgroundColor: provider === p.id ? 'rgba(90,158,143,0.1)' : 'transparent',
+                        color: provider === p.id ? 'var(--accent-teal, #5a9e8f)' : 'var(--text-tertiary, #5a5854)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: '9px',
+                        letterSpacing: '0.04em',
+                        cursor: 'pointer',
+                        transition: 'all 120ms ease',
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="password"
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder="sk-ant-... (optional — upgrades to Sonnet)"
+                  placeholder={`${activeProvider.placeholder} (optional)`}
                   style={{
                     width: '100%',
                     padding: '6px 10px',
@@ -400,7 +434,7 @@ export default function ChatPanel({ agent, onClose }: ChatPanelProps) {
                     fontFamily: 'var(--font-sans, sans-serif)',
                     fontSize: '10px',
                     color: 'var(--text-ghost, #3a3834)',
-                    margin: '4px 0 0',
+                    margin: 0,
                     lineHeight: 1.4,
                   }}
                 >
