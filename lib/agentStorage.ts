@@ -54,6 +54,9 @@ function _redactForStorage(envVars: EnvVarMap): EnvVarMap {
     ...envVars,
     ANTHROPIC_API_KEY: '<your-anthropic-api-key>',
   };
+  if (redacted.LLM_API_KEY && !redacted.LLM_API_KEY.startsWith('<')) {
+    redacted.LLM_API_KEY = '<your-llm-api-key>';
+  }
   if ('TAVILY_API_KEY' in redacted && redacted.TAVILY_API_KEY && !redacted.TAVILY_API_KEY.startsWith('<')) {
     redacted.TAVILY_API_KEY = '<your-tavily-api-key>';
   }

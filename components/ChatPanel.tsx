@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { StoredAgent } from '@/lib/agentStorage';
+import { PROVIDERS } from '@/lib/providers';
 
 const ACCENT_MAP: Record<string, string> = {
   amber:  'var(--accent-amber)',
@@ -28,15 +29,6 @@ interface ChatMessage {
 }
 
 type ChatMode = 'preview' | 'live';
-
-const PROVIDERS = [
-  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
-  { id: 'openai',    label: 'OpenAI',    placeholder: 'sk-...' },
-  { id: 'gemini',    label: 'Gemini',    placeholder: 'AIza...' },
-  { id: 'groq',      label: 'Groq',      placeholder: 'gsk_...' },
-  { id: 'xai',       label: 'xAI',       placeholder: 'xai-...' },
-  { id: 'deepseek',  label: 'DeepSeek',  placeholder: 'sk-...' },
-] as const;
 
 interface ChatPanelProps {
   agent: StoredAgent;

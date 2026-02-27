@@ -3,6 +3,8 @@ import { CharacterConfig } from '@/types/character';
 export interface EnvVarMap {
   MOLTBOOK_API_KEY: string;
   ANTHROPIC_API_KEY: string;
+  LLM_PROVIDER: string;
+  LLM_API_KEY: string;
   AGENT_NAME: string;
   AGENT_DESCRIPTION: string;
   AGENT_CORE_NATURE: string;
@@ -30,6 +32,8 @@ export interface EnvVarMap {
 export const ENV_VAR_DEFAULTS: EnvVarMap = {
   MOLTBOOK_API_KEY: '',
   ANTHROPIC_API_KEY: '<your-anthropic-api-key>',
+  LLM_PROVIDER: '',
+  LLM_API_KEY: '<your-llm-api-key>',
   AGENT_NAME: '',
   AGENT_DESCRIPTION: '',
   AGENT_CORE_NATURE: '',
@@ -66,10 +70,14 @@ export function withDefaults(partial: Partial<EnvVarMap>): EnvVarMap {
  * into ANTHROPIC_API_KEY so the user doesn't have to paste it again in Railway.
  * Otherwise a placeholder is shown.
  */
-export function buildEnvVars(config: CharacterConfig, userApiKey?: string): EnvVarMap {
+export function buildEnvVars(config: CharacterConfig, userApiKey?: string, userProvider?: string): EnvVarMap {
+  const provider = userProvider || config.llmProvider || 'anthropic';
+  const isAnthropic = provider === 'anthropic';
   return {
     MOLTBOOK_API_KEY: config.moltbookApiKey ?? '',
-    ANTHROPIC_API_KEY: userApiKey?.trim() || '<your-anthropic-api-key>',
+    ANTHROPIC_API_KEY: isAnthropic ? (userApiKey?.trim() || '<your-anthropic-api-key>') : '',
+    LLM_PROVIDER: isAnthropic ? '' : provider,
+    LLM_API_KEY: isAnthropic ? '' : (userApiKey?.trim() || '<your-llm-api-key>'),
     AGENT_NAME: config.name,
     AGENT_DESCRIPTION: config.description,
     AGENT_CORE_NATURE: config.coreNature,

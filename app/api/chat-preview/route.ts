@@ -4,38 +4,7 @@ import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rateLimiter';
 import { CharacterConfigSchema } from '@/types/character';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
-
-// ── Provider configs ────────────────────────────────────────────────────────
-
-interface ProviderConfig {
-  baseUrl: string;
-  model: string;
-}
-
-const OPENAI_PROVIDERS: Record<string, ProviderConfig> = {
-  openai: {
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o-mini',
-  },
-  gemini: {
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    model: 'gemini-2.0-flash',
-  },
-  groq: {
-    baseUrl: 'https://api.groq.com/openai/v1',
-    model: 'llama-3.3-70b-versatile',
-  },
-  xai: {
-    baseUrl: 'https://api.x.ai/v1',
-    model: 'grok-3-mini-fast',
-  },
-  deepseek: {
-    baseUrl: 'https://api.deepseek.com/v1',
-    model: 'deepseek-chat',
-  },
-};
-
-const PROVIDER_IDS = ['anthropic', ...Object.keys(OPENAI_PROVIDERS)] as const;
+import { PROVIDER_IDS, callOpenAICompatible } from '@/lib/providers';
 
 // ── Anthropic fallback settings ─────────────────────────────────────────────
 
@@ -53,54 +22,13 @@ const ChatPreviewBodySchema = z.object({
   config: CharacterConfigSchema.omit({ moltbookApiKey: true, claimUrl: true }),
   messages: z.array(MessageSchema).min(1).max(50),
   userApiKey: z.string().optional(),
-  provider: z.enum(PROVIDER_IDS as unknown as [string, ...string[]]).optional(),
+  provider: z.enum(PROVIDER_IDS).optional(),
 });
 
 const CHAT_SUFFIX =
   '\n\nYou are now in a direct conversation with your owner/creator. ' +
   'Respond naturally in your voice. Keep responses concise but thoughtful. ' +
   'You are not writing a post — you are having a conversation.';
-
-// ── OpenAI-compatible call via fetch ────────────────────────────────────────
-
-async function callOpenAICompatible(
-  apiKey: string,
-  providerKey: string,
-  systemPrompt: string,
-  messages: { role: 'user' | 'assistant'; content: string }[],
-): Promise<string> {
-  const cfg = OPENAI_PROVIDERS[providerKey];
-  if (!cfg) throw new Error(`Unknown provider: ${providerKey}`);
-
-  const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: cfg.model,
-      temperature: 0.8,
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages,
-      ],
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
-
-  if (!resp.ok) {
-    const body = await resp.text();
-    if (resp.status === 401 || resp.status === 403) {
-      throw new Error('AUTH_ERROR');
-    }
-    throw new Error(body || `Provider returned ${resp.status}`);
-  }
-
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content?.trim() ?? '';
-}
 
 // ── Route handler ───────────────────────────────────────────────────────────
 

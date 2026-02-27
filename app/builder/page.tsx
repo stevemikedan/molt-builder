@@ -60,6 +60,7 @@ function BuilderInner() {
   const [config, setConfig] = useState<CharacterConfig>(DEFAULT_CONFIG);
   const [nameAvailable, setNameAvailable] = useState(false);
   const [userApiKey, setUserApiKey] = useState('');
+  const [userProvider, setUserProvider] = useState('anthropic');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editAgentId, setEditAgentId] = useState<string | undefined>(undefined);
   const [editRailwayConfig, setEditRailwayConfig] = useState<StoredAgent['railwayConfig']>(undefined);
@@ -77,18 +78,20 @@ function BuilderInner() {
     setEditAgentId(agent.id);
     setEditRailwayConfig(agent.railwayConfig);
     setConfig(agent.config);
+    if (agent.config.llmProvider) setUserProvider(agent.config.llmProvider);
     setNameAvailable(true); // name is locked, treat as valid
   }, [searchParams]);
 
   function handleRegistered(data: { apiKey: string; claimUrl: string; tweetTemplate: string }) {
     const updatedConfig = { ...config, moltbookApiKey: data.apiKey, claimUrl: data.claimUrl };
-    const envVars = buildEnvVars(updatedConfig);
+    const envVars = buildEnvVars(updatedConfig, userApiKey, userProvider);
     savePendingAgent(updatedConfig, envVars, data.claimUrl, data.tweetTemplate);
   }
 
   function handleSave() {
-    const envVars = buildEnvVars(config, userApiKey);
-    saveAgent(config, envVars);
+    const updatedConfig = { ...config, llmProvider: userProvider as CharacterConfig['llmProvider'] };
+    const envVars = buildEnvVars(updatedConfig, userApiKey, userProvider);
+    saveAgent(updatedConfig, envVars);
     router.push('/');
   }
 
@@ -220,12 +223,15 @@ function BuilderInner() {
               config={config}
               userApiKey={userApiKey}
               setUserApiKey={setUserApiKey}
+              userProvider={userProvider}
+              setUserProvider={setUserProvider}
             />
           )}
           {step === 7 && (
             <Step7Deploy
               config={config}
               userApiKey={userApiKey}
+              userProvider={userProvider}
               onSave={handleSave}
               isEditMode={isEditMode}
               agentId={editAgentId}

@@ -6,10 +6,12 @@ import { buildEnvVars } from '@/lib/buildEnvVars';
 import { EnvVarTable } from '@/components/EnvVarTable';
 import { getRailwayToken } from '@/lib/railwayStorage';
 import { StoredAgent, addLogEntry } from '@/lib/agentStorage';
+import { PROVIDERS } from '@/lib/providers';
 
 interface Props {
   config: CharacterConfig;
   userApiKey: string;
+  userProvider: string;
   onSave: () => void;
   isEditMode?: boolean;
   agentId?: string;
@@ -18,14 +20,17 @@ interface Props {
 
 type PushState = 'idle' | 'pushing' | 'success' | 'error';
 
-export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, railwayConfig }: Props) {
-  const envVars = buildEnvVars(config, userApiKey);
+export function Step7Deploy({ config, userApiKey, userProvider, onSave, isEditMode, agentId, railwayConfig }: Props) {
+  const envVars = buildEnvVars(config, userApiKey, userProvider);
   const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_TEMPLATE_URL ?? '#';
-  const hasAnthropicKey = !!userApiKey?.trim();
+  const isAnthropic = userProvider === 'anthropic';
+  const hasApiKey = !!userApiKey?.trim();
+  const providerLabel = PROVIDERS.find(p => p.id === userProvider)?.label ?? 'Anthropic';
   const [pushState, setPushState] = useState<PushState>('idle');
   const [pushError, setPushError] = useState('');
 
-  const preFilled = hasAnthropicKey ? 13 : 12;
+  const totalVars = 15; // includes LLM_PROVIDER + LLM_API_KEY now
+  const preFilled = hasApiKey ? totalVars : totalVars - 1;
 
   async function handleRailwayPush() {
     const token = getRailwayToken();
@@ -95,9 +100,9 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
         }}>
           {isEditMode
             ? 'Copy the updated env vars below and paste them into Railway. Your agent will redeploy automatically.'
-            : preFilled === 13
-              ? 'All 13 environment variables are pre-filled from your builder selections — nothing to re-enter.'
-              : '12 of 13 environment variables are pre-filled from your builder selections. You\'ll add your Anthropic API key in Railway.'}
+            : hasApiKey
+              ? `All ${totalVars} environment variables are pre-filled from your builder selections — nothing to re-enter.`
+              : `${totalVars - 1} of ${totalVars} environment variables are pre-filled. You'll add your ${providerLabel} API key in Railway.`}
         </p>
       </div>
 
@@ -116,7 +121,7 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
             color: 'var(--accent-teal, #5a9e8f)',
             margin: '0 0 2px',
           }}>
-            {preFilled} / 13
+            {preFilled} / {totalVars}
           </p>
           <p style={{
             fontFamily: 'var(--font-sans, sans-serif)',
@@ -131,7 +136,7 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
           padding: '14px 18px',
           borderRadius: '8px',
           backgroundColor: 'var(--bg-card, #1a1d25)',
-          border: hasAnthropicKey
+          border: hasApiKey
             ? '1px solid rgba(90,158,143,0.25)'
             : '1px solid rgba(196,149,106,0.25)',
         }}>
@@ -139,10 +144,10 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
             fontFamily: 'var(--font-mono, monospace)',
             fontSize: '22px',
             fontWeight: 600,
-            color: hasAnthropicKey ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
+            color: hasApiKey ? 'var(--accent-teal, #5a9e8f)' : 'var(--accent-amber, #c4956a)',
             margin: '0 0 2px',
           }}>
-            {hasAnthropicKey ? '✓' : '1'}
+            {hasApiKey ? '✓' : '1'}
           </p>
           <p style={{
             fontFamily: 'var(--font-sans, sans-serif)',
@@ -150,7 +155,7 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
             color: 'var(--text-tertiary, #5a5854)',
             margin: 0,
           }}>
-            {hasAnthropicKey ? 'Anthropic key included' : 'Anthropic key to add in Railway'}
+            {hasApiKey ? `${providerLabel} key included` : `${providerLabel} key to add in Railway`}
           </p>
         </div>
       </div>
@@ -233,14 +238,14 @@ export function Step7Deploy({ config, userApiKey, onSave, isEditMode, agentId, r
                 {
                   n: '3',
                   title: 'Open Railway\'s Raw Editor',
-                  body: 'In the Variables section, click the "Raw Editor" icon (top right of the variables panel). Paste the copied block. All 12 pre-filled variables appear instantly.',
+                  body: 'In the Variables section, click the "Raw Editor" icon (top right of the variables panel). Paste the copied block. All pre-filled variables appear instantly.',
                 },
                 {
                   n: '4',
-                  title: hasAnthropicKey ? 'Deploy' : 'Add your Anthropic API key, then deploy',
-                  body: hasAnthropicKey
-                    ? 'Your Anthropic API key is already in the pasted block. Click Deploy.'
-                    : 'Find ANTHROPIC_API_KEY in the variables list and paste your key from console.anthropic.com. Then click Deploy.',
+                  title: hasApiKey ? 'Deploy' : `Add your ${providerLabel} API key, then deploy`,
+                  body: hasApiKey
+                    ? `Your ${providerLabel} API key is already in the pasted block. Click Deploy.`
+                    : `Find ${isAnthropic ? 'ANTHROPIC_API_KEY' : 'LLM_API_KEY'} in the variables list and paste your key. Then click Deploy.`,
                 },
               ].map((step) => (
                 <div key={step.n} style={{ display: 'flex', gap: '16px' }}>

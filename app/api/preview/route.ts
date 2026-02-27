@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rateLimiter';
 import { CharacterConfigSchema } from '@/types/character';
 import { buildSystemPrompt } from '@/lib/buildSystemPrompt';
+import { PROVIDER_IDS, callOpenAICompatible } from '@/lib/providers';
 
 // Static stub feed contexts that represent varied Moltbook content scenarios
 const STUB_CONTEXTS = [
@@ -22,6 +23,7 @@ const PreviewBodySchema = CharacterConfigSchema
   .extend({
     // Optional user-supplied key. If present, used instead of operator fallback.
     userApiKey: z.string().optional(),
+    provider: z.enum(PROVIDER_IDS).optional(),
   });
 
 export async function POST(request: NextRequest) {
@@ -58,11 +60,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { userApiKey, ...characterData } = parsed.data;
+  const { userApiKey, provider, ...characterData } = parsed.data;
 
-  // Resolve which key and model to use:
-  //   - User-supplied key → Sonnet (full quality)
-  //   - Operator fallback key → Haiku (cheap; for users who haven't set up their own key yet)
+  const systemPrompt = buildSystemPrompt(characterData);
+  const posts: string[] = [];
+
+  // ── Non-Anthropic provider with user key ──────────────────────────────
+  if (userApiKey?.trim() && provider && provider !== 'anthropic') {
+    for (const context of STUB_CONTEXTS) {
+      try {
+        const text = await callOpenAICompatible(
+          userApiKey.trim(),
+          provider,
+          systemPrompt,
+          [{
+            role: 'user' as const,
+            content:
+              `You have just read the following content on Moltbook: ${context}. ` +
+              'Generate a standalone_post that is true to your nature. ' +
+              'Do not summarize what you read. Respond to it or let it inform what you say.',
+          }],
+          { temperature: 1.0 },
+        );
+        if (text) posts.push(text);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg === 'AUTH_ERROR') {
+          return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+        }
+        // Skip failed generations
+      }
+    }
+    return NextResponse.json({ posts });
+  }
+
+  // ── Anthropic path (user key or fallback env key) ─────────────────────
   const resolvedKey = userApiKey?.trim() || process.env.ANTHROPIC_API_KEY;
   const resolvedModel = userApiKey?.trim() ? USER_MODEL : FALLBACK_MODEL;
 
@@ -70,10 +102,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Preview unavailable' }, { status: 503 });
   }
 
-  const systemPrompt = buildSystemPrompt(characterData);
   const client = new Anthropic({ apiKey: resolvedKey });
-
-  const posts: string[] = [];
 
   for (const context of STUB_CONTEXTS) {
     try {

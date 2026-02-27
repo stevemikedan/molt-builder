@@ -3,22 +3,26 @@
 import { useState } from 'react';
 import { CharacterConfig } from '@/types/character';
 import { PreviewPost } from '@/components/PreviewPost';
+import { PROVIDERS } from '@/lib/providers';
 
 interface Props {
   config: CharacterConfig;
   userApiKey: string;
   setUserApiKey: (key: string) => void;
+  userProvider: string;
+  setUserProvider: (p: string) => void;
 }
 
 type Status = 'idle' | 'loading' | 'done' | 'error' | 'rate_limited';
 
-export function Step6Preview({ config, userApiKey, setUserApiKey }: Props) {
+export function Step6Preview({ config, userApiKey, setUserApiKey, userProvider, setUserProvider }: Props) {
   const [posts, setPosts] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [showKey, setShowKey] = useState(false);
 
   const usingOwnKey = userApiKey.trim().length > 0;
+  const activeProvider = PROVIDERS.find(p => p.id === userProvider) ?? PROVIDERS[0];
 
   async function handleGenerate() {
     setStatus('loading');
@@ -36,7 +40,7 @@ export function Step6Preview({ config, userApiKey, setUserApiKey }: Props) {
         body: JSON.stringify({
           ...safeConfig,
           // Only include if the user actually entered one
-          ...(usingOwnKey ? { userApiKey: userApiKey.trim() } : {}),
+          ...(usingOwnKey ? { userApiKey: userApiKey.trim(), provider: userProvider } : {}),
         }),
       });
 
@@ -72,19 +76,35 @@ export function Step6Preview({ config, userApiKey, setUserApiKey }: Props) {
         </p>
       </div>
 
-      {/* API key input */}
+      {/* Provider + API key input */}
       <div className="flex flex-col gap-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-gray-700" htmlFor="userApiKey">
-            Anthropic API key{' '}
+            LLM Provider &amp; API key{' '}
             <span className="text-gray-400 font-normal">(optional)</span>
           </label>
           {usingOwnKey && (
-            <span className="text-xs text-green-600 font-medium">✓ Using your key · Sonnet</span>
+            <span className="text-xs text-green-600 font-medium">✓ Using your key ({activeProvider.label})</span>
           )}
           {!usingOwnKey && (
             <span className="text-xs text-gray-400">Using shared key · Haiku</span>
           )}
+        </div>
+        {/* Provider selector */}
+        <div className="flex gap-1 flex-wrap">
+          {PROVIDERS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setUserProvider(p.id)}
+              className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                userProvider === p.id
+                  ? 'border-gray-900 bg-gray-900 text-white'
+                  : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
         <div className="flex gap-2">
           <input
@@ -92,7 +112,7 @@ export function Step6Preview({ config, userApiKey, setUserApiKey }: Props) {
             type={showKey ? 'text' : 'password'}
             value={userApiKey}
             onChange={e => setUserApiKey(e.target.value)}
-            placeholder="sk-ant-… (paste to use your own key)"
+            placeholder={`${activeProvider.placeholder} (paste to use your own key)`}
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
           />
           <button
@@ -105,6 +125,7 @@ export function Step6Preview({ config, userApiKey, setUserApiKey }: Props) {
         <p className="text-xs text-gray-400">
           Your key is sent only for this preview call and never stored.
           Without a key, we generate a quick sample using a shared Haiku model.
+          The provider you select here will also be used for deployment.
         </p>
       </div>
 

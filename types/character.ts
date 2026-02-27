@@ -37,6 +37,7 @@ export const CharacterConfigSchema = z.object({
   tavilyApiKey: z.string().optional(),
   replyToComments: z.boolean().optional(),  // default true
   replyMaxPerCycle: z.number().optional(),  // default 2
+  llmProvider: z.enum(['anthropic', 'openai', 'gemini', 'groq', 'xai', 'deepseek']).optional(),
 });
 
 export type CharacterConfig = z.infer<typeof CharacterConfigSchema>;
